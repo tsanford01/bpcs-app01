@@ -88,21 +88,45 @@ export function setupAuth(app: Express) {
   // Auth routes
   app.post("/api/register", async (req, res, next) => {
     try {
-      const existingUser = await storage.getUserByUsername(req.body.username);
-      if (existingUser) {
-        return res.status(400).json({ message: "Username already exists" });
+      // Validate required fields
+      const { username, password, name } = req.body;
+      if (!username || !password || !name) {
+        return res.status(400).json({ 
+          message: "Username, password, and name are required" 
+        });
       }
 
-      const user = await storage.createUser({
-        ...req.body,
-        password: await hashPassword(req.body.password),
-      });
+      // Check if username already exists
+      const existingUser = await storage.getUserByUsername(username);
+      if (existingUser) {
+        return res.status(400).json({ 
+          message: "Username already exists" 
+        });
+      }
 
-      req.login(user, (err) => {
-        if (err) return next(err);
-        res.status(201).json(user);
-      });
+      try {
+        const user = await storage.createUser({
+          username,
+          password: await hashPassword(password),
+          name,
+          role: "admin", // Default role
+        });
+
+        req.login(user, (err) => {
+          if (err) {
+            console.error("Login error after registration:", err);
+            return next(err);
+          }
+          res.status(201).json(user);
+        });
+      } catch (dbError) {
+        console.error("Database error during registration:", dbError);
+        return res.status(500).json({ 
+          message: "Failed to create user account" 
+        });
+      }
     } catch (error) {
+      console.error("Registration error:", error);
       next(error);
     }
   });
