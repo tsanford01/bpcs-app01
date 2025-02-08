@@ -41,7 +41,19 @@ import {
 
 // Utility function to format date for input
 function formatDateForInput(date: Date): string {
-  return date.toLocaleString('sv-SE').slice(0, 16);
+  // Round minutes to nearest 15
+  const minutes = date.getMinutes();
+  const remainder = minutes % 15;
+  const roundedMinutes = remainder < 8 ? minutes - remainder : minutes + (15 - remainder);
+
+  // Create new date with rounded minutes
+  const roundedDate = new Date(date);
+  roundedDate.setMinutes(roundedMinutes);
+  roundedDate.setSeconds(0);
+  roundedDate.setMilliseconds(0);
+
+  // Format in ISO format and slice to get YYYY-MM-DDTHH:mm
+  return roundedDate.toISOString().slice(0, 16);
 }
 
 // Utility function to parse input date with strict 15-minute intervals
@@ -217,7 +229,7 @@ function NewAppointmentDialog({ customers }: { customers: Customer[] }) {
     resolver: zodResolver(insertAppointmentSchema),
     defaultValues: {
       customerId: undefined,
-      date: new Date().toISOString(),
+      date: new Date(),  // Change from string to Date
       serviceType: undefined,
       status: 'pending',
       notes: '',
@@ -319,7 +331,7 @@ function NewAppointmentDialog({ customers }: { customers: Customer[] }) {
                         const inputDate = e.target.value;
                         if (inputDate) {
                           const date = parseInputDate(inputDate);
-                          field.onChange(date.toISOString());
+                          field.onChange(date); // Changed this line
                         }
                       }}
                       value={field.value ? formatDateForInput(new Date(field.value)) : ""}
