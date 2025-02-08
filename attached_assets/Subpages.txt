@@ -1,0 +1,471 @@
+Below is a **page-by-page layout** for each major **Admin (Business Owner) subpage** in both **Web** and **Mobile** views. The idea is to maintain a consistent structure across all pages while optimizing for the different form factors.
+
+---
+
+## **1. Dashboard**
+
+(Already described, but re-stated here for completeness.)
+
+### **Web Layout**
+
+- **Header (Top Bar)**: Logo, Search, Notifications, Profile.
+- **Sidebar**: Links to all subpages (Appointments, Chat, Payments, CRM, Routes, Reviews, Settings).
+- **Main Content**:
+    - **Key Metrics/Stats Cards**: Appointments Today, Unread Messages, Outstanding Invoices, Pending Reviews.
+    - **Quick Actions**: (+) New Appointment, Send Invoice, etc.
+    - **Upcoming Appointments**: List or calendar snippet.
+    - **Recent Activity**: Stream of new bookings, payments, reviews.
+    - **Map/Route Preview** (optional small panel).
+
+### **Mobile Layout**
+
+- **Top Bar**: Hamburger menu, Logo (optional), Notifications.
+- **Bottom Nav**: Dashboard, Appointments, Chat, Payments, More.
+- **Main Content (Vertical Scroll)**:
+    - **Metrics Cards** (stacked or horizontally scrollable).
+    - **Quick Action Buttons**.
+    - **Upcoming Appointments** list.
+    - **Recent Activity**.
+
+---
+
+## **2. Appointments / Schedule**
+
+### **Web Layout**
+
+1. **Header (Top Bar)**: Consistent with the overall app (logo, user profile, notifications).
+2. **Sidebar**: Highlight **Appointments** as the active section.
+3. **Main Content**:
+    
+    **(a) Calendar View (Primary UI)**
+    
+    - Monthly/Weekly/Day view toggle.
+    - Drag-and-drop appointments (optional).
+    - Color-coded statuses (Confirmed, Pending, Completed).
+    
+    **(b) Appointment List Panel** (optional sidebar or below the calendar)
+    
+    - Filter by date range, technician, or status.
+    - Search bar for quick find (by customer name or address).
+    
+    **(c) Appointment Details Drawer**
+    
+    - Clicking on an appointment opens a side drawer or modal.
+    - Info: Customer name, address, contact info, service type, notes.
+    - Actions: Reschedule, Cancel, Mark Complete, Add Notes.
+    
+    **(d) Quick Add / “+ Appointment”**
+    
+    - Button to create a new appointment via a simple form:
+        - Date & Time picker, Customer selection (new or existing), Service type, etc.
+
+```
++-------------------------------------------------------------------+
+| [Top Bar]                                                         |
++---------+---------------------------------------------------------+
+| Sidebar |     [Calendar View]           [List of Appointments]   |
+| (nav)   |                                                         |
+|         |  -> Appointment details appear in a modal or side pane.|
++---------+---------------------------------------------------------+
+
+```
+
+### **Mobile Layout**
+
+1. **Top Bar**: Title “Appointments,” hamburger menu, notifications.
+2. **Bottom Nav**: Possibly Dashboard, Appointments, Chat, Payments, More.
+3. **Main Content (Vertical)**:
+    
+    **(a) Calendar or List Toggle**
+    
+    - **Tab** or **Segmented Control**: “Calendar” | “List”
+    
+    **(b) Calendar View**
+    
+    - Likely a simplified month/week view.
+    - Tap a day to see appointments in a popup or transition to a day list.
+    
+    **(c) Appointment List**
+    
+    - A scrollable list sorted by time.
+    - Each entry shows customer name, time, address.
+    
+    **(d) Floating Action Button (FAB)**
+    
+    - “+” to create a new appointment.
+    - Opens a form overlay with date/time pickers and service details.
+
+---
+
+## **3. Chat / Messages**
+
+### **Web Layout**
+
+1. **Header / Sidebar**: Same layout, highlight **Chat** in the sidebar.
+2. **Main Content**:
+    
+    **(a) Conversation List (Left Panel)**
+    
+    - Displays all recent conversations with customers (or leads).
+    - Each item: Customer name, last message snippet, timestamp, unread badge.
+    
+    **(b) Chat Window (Right Panel)**
+    
+    - Shows the selected conversation.
+    - Display messages in a threaded format, with timestamps.
+    - Provide an **input box** at bottom to type responses.
+    - **Attachment** button for images or documents.
+    - Option for “AI Draft Response” if using an LLM-based assistant.
+    
+    **(c) Customer Info Sidebar (Optional)**
+    
+    - If selected, a third column or a side drawer with the customer’s details: name, contact, service history, notes.
+
+```
++-------------------------------------------------------------------+
+| [Top Bar]                                                         |
++---------+------------+--------------------------------------------+
+| Sidebar | Convo List | Chat Window (Selected Conversation)        |
+|         |            | [Text Input + Send Button, AI Draft]       |
++---------+------------+--------------------------------------------+
+
+```
+
+### **Mobile Layout**
+
+1. **Top Bar**: Title “Chat,” back arrow or hamburger, notifications.
+2. **Bottom Nav**: Possibly Dashboard, Appointments, Chat, etc.
+3. **Main Content**:
+    
+    **(a) Conversation List**
+    
+    - Full screen list of recent chats.
+    - Tap a conversation to open it.
+    
+    **(b) Conversation Detail View**
+    
+    - Threaded messages, scrollable.
+    - Text input box at the bottom.
+    - “Attach” button or icon.
+    - Possibly a small button for “AI Suggestions.”
+
+```
++------------------------+
+| [Chat Title] [Icons]   |
++------------------------+
+| Conversation List      |
+| (each chat snippet)    |
++------------------------+
+| [FAB or button to new chat, if needed] |
++------------------------+
+
+```
+
+*(In many mobile chat UIs, you might not have a “new chat” button if chat is only inbound from customers.)*
+
+---
+
+## **4. Payments & Invoices**
+
+### **Web Layout**
+
+1. **Header / Sidebar**: Highlight **Payments** in the sidebar.
+2. **Main Content**:
+    
+    **(a) Overview / Summary Cards**
+    
+    - Total Outstanding, Total Overdue, Total Paid This Month, etc.
+    
+    **(b) Invoice List / Table**
+    
+    - Columns: Invoice #, Customer Name, Amount, Due Date, Status (Paid, Overdue, Pending).
+    - Sorting and filtering by date range, status, or amount.
+    - Search bar for invoice number or customer name.
+    
+    **(c) Invoice Detail / Right Panel or Modal**
+    
+    - Invoice line items, notes, payment history.
+    - Action buttons: Send Reminder, Mark as Paid, Refund (if supported).
+    
+    **(d) Create New Invoice**
+    
+    - Button or link to open a form for invoice creation.
+
+```
++---------+----------------------------------------------------------+
+| Sidebar | [Payments Overview Cards]                                |
+| (nav)   |                                                          |
+|         | [Invoice Table/List]                                     |
+|         |  -> Selecting an invoice opens detail in a side pane     |
+|         |     or modal with actions (Send Reminder, Mark Paid).    |
++---------+----------------------------------------------------------+
+
+```
+
+### **Mobile Layout**
+
+1. **Top Bar**: Title “Payments” or “Invoices,” hamburger icon, notifications.
+2. **Bottom Nav**: Possibly Dashboard, Appointments, Chat, Payments.
+3. **Main Content (Vertical)**:
+    
+    **(a) Overview Cards**
+    
+    - Stacked or swipeable cards: Outstanding, Overdue, Paid This Month.
+    
+    **(b) Invoice List**
+    
+    - Scrollable list, each entry showing Invoice #, Customer Name, Status, and Due Amount.
+    - Tap to open detail.
+    
+    **(c) Invoice Detail View**
+    
+    - Invoice breakdown: items, amounts, due date, etc.
+    - Buttons: Send Reminder, Mark Paid, etc.
+    
+    **(d) FAB or Button** for “New Invoice.”
+    
+
+---
+
+## **5. CRM / Customer List**
+
+### **Web Layout**
+
+1. **Header / Sidebar**: CRM as the active section.
+2. **Main Content**:
+    
+    **(a) Customer List**
+    
+    - Table with columns: Name, Address, Contact, Last Appointment, etc.
+    - Filter/search by name, location, or service type.
+    
+    **(b) Customer Detail Pane**
+    
+    - When a user clicks a customer, open a side drawer or detail page:
+    - Contact info, addresses, appointment history, notes, outstanding invoices, etc.
+    - Quick action buttons: “Create Appointment,” “Send Message,” “Generate Invoice.”
+    
+    **(c) Bulk Actions** (optional)
+    
+    - Checkboxes to select multiple customers for bulk communications or tagging.
+
+```
++---------+---------------------------------------------------------+
+| Sidebar | [Customer List Table]                                   |
+|         |  -> Clicking a customer opens a details side pane       |
+|         |     with contact info, past services, etc.              |
++---------+---------------------------------------------------------+
+
+```
+
+### **Mobile Layout**
+
+1. **Top Bar**: Title “Customers,” back/hamburger, notifications.
+2. **Bottom Nav**: Possibly under “More” or directly accessible if it’s a main tab.
+3. **Main Content**:
+    
+    **(a) Customer List (Vertical Scroll)**
+    
+    - Each item: Customer name, short snippet of last appointment, etc.
+    - Tap to open detail.
+    
+    **(b) Customer Detail**
+    
+    - Contact info, addresses, appointment history, notes.
+    - Action buttons (e.g., “New Appointment,” “Send Invoice,” “Chat”).
+    
+    **(c) Search / Filter**
+    
+    - A simple search bar at the top.
+
+---
+
+## **6. Route Management**
+
+### **Web Layout**
+
+1. **Header / Sidebar**: “Route” or “Route Management.”
+2. **Main Content**:
+    
+    **(a) Map View**
+    
+    - Shows current day’s appointments pinned on a map.
+    - Option to select a date or date range.
+    - Drag and drop to reorder stops if manual route adjustment is desired.
+    
+    **(b) Route Summary Panel**
+    
+    - List of appointments in their route order: Customer name, address, scheduled time.
+    - Estimated travel time, total distance.
+    
+    **(c) Optimization Button**
+    
+    - Auto-generate the best route (using a routing algorithm).
+    - Option to assign specific routes to different technicians.
+    
+    **(d) Notifications**
+    
+    - Send “On the way” SMS to next appointment or all.
+
+```
++---------+----------------------------------------------------------+
+| Sidebar | [Map with Markers for Appointments]                      |
+| (nav)   | [Route Summary / Appointment List]                       |
+|         | [Optimize Route Button], [Assign to Tech], etc.          |
++---------+----------------------------------------------------------+
+
+```
+
+### **Mobile Layout**
+
+1. **Top Bar**: Title “Route Management,” hamburger, notifications.
+2. **Bottom Nav**: Might be under “More” or a main tab if route management is critical.
+3. **Main Content**:
+    
+    **(a) Map (if feasible on mobile)**
+    
+    - A smaller interactive map with pins for each stop.
+    
+    **(b) Appointment List**
+    
+    - Ordered list with addresses, times, and an “Optimize” button.
+    - Tap an appointment to see details or open a map app for navigation.
+    
+    **(c) Technician Assignment**
+    
+    - Drop-down or selection if multiple technicians exist.
+
+---
+
+## **7. Reviews / Feedback**
+
+### **Web Layout**
+
+1. **Header / Sidebar**: “Reviews” highlighted.
+2. **Main Content**:
+    
+    **(a) Reviews Queue**
+    
+    - List of all submitted reviews.
+    - Columns: Customer name, date, rating, snippet.
+    - Status: Pending, Approved, Rejected.
+    
+    **(b) Review Detail**
+    
+    - Full text of the review, star rating, any attached photos.
+    - Buttons: Approve, Reject, or Mark as Spam.
+    
+    **(c) Published Reviews Management**
+    
+    - Possibly another tab or filter for “Approved” reviews.
+    - Could also control where approved reviews are displayed (website, social media).
+
+```
++---------+----------------------------------------------------------+
+| Sidebar | [Reviews List Table: Pending / Approved / Rejected]      |
+| (nav)   | -> Clicking a review opens detail pane to read full text |
+|         |    and Approve/Reject                                    |
++---------+----------------------------------------------------------+
+
+```
+
+### **Mobile Layout**
+
+1. **Top Bar**: Title “Reviews,” hamburger, notifications.
+2. **Main Content**:
+    
+    **(a) Tab or Filter**
+    
+    - “Pending,” “Approved,” “All Reviews.”
+    
+    **(b) Reviews List**
+    
+    - Each item: Customer name, rating, partial text.
+    - Tap to expand detail.
+    
+    **(c) Review Detail View**
+    
+    - Full text, star rating, any attachments.
+    - Buttons: Approve, Reject.
+
+---
+
+## **8. Settings**
+
+### **Web Layout**
+
+1. **Header / Sidebar**: “Settings” active.
+2. **Main Content**:
+    
+    **(a) General Settings**
+    
+    - Business name, address, contact details, operating hours, etc.
+    
+    **(b) Payment Settings**
+    
+    - Payment gateway credentials (e.g., Stripe keys).
+    - Invoice templates, tax rates.
+    
+    **(c) Notifications Settings**
+    
+    - Configure SMS/Email templates, reminder intervals.
+    - Toggle for push notifications.
+    
+    **(d) User Management**
+    
+    - Add or remove admin/staff accounts, set permissions.
+    - Reset passwords.
+    
+    **(e) Integrations** (optional)
+    
+    - Chatbot/LLM integration.
+    - Accounting software (QuickBooks, Xero).
+
+```
++---------+---------------------------------------------------------+
+| Sidebar | [Settings]                                              |
+| (nav)   |  - General / Business Info                              |
+|         |  - Payment & Invoicing                                  |
+|         |  - Notifications                                        |
+|         |  - User Management                                      |
+|         |  - Integrations                                         |
++---------+---------------------------------------------------------+
+
+```
+
+### **Mobile Layout**
+
+1. **Top Bar**: Title “Settings,” hamburger, notifications.
+2. **Main Content (Vertical)**:
+    
+    **(a) Sections as List Items**
+    
+    - “Business Info”
+    - “Payment Settings”
+    - “Notifications”
+    - “User Management”
+    - “Integrations”
+    
+    **(b) Tapping a Section**
+    
+    - Opens a secondary screen with detailed form fields.
+
+```
++------------------------+
+| Settings               |
+|  - Business Info       |
+|  - Payment Settings    |
+|  - Notifications       |
+|  - User Management     |
+|  - Integrations        |
++------------------------+
+
+```
+
+---
+
+# **Putting It All Together**
+
+Each subpage follows a consistent structure: **Header, Navigation, Main Content**, with **cards** or **lists** for essential data, and a **detail pane** or **modal** for deeper info or actions. On **Mobile**, everything collapses into vertical lists or minimal navigational elements to maximize screen space.
+
+**Remember**: These layouts are **high-level**. In actual design, you’ll refine spacing, color schemes, typography, and interactive elements to create a polished user experience.

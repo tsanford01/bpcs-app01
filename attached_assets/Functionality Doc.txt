@@ -1,0 +1,387 @@
+Below is a **Functionality Document** (sometimes referred to as a Functional Specification) that details how each module or component of the Beckham Pest Control app should behave. This document complements the PRD and the page-by-page layouts by describing the user flows, interactions, and data handling in more detail.
+
+---
+
+# **1. Introduction & Scope**
+
+This Functionality Doc describes all **major features** of the Beckham Pest Control Mobile & Web application from the **Admin (Business Owner)** perspective as well as key **Customer (End User)** flows. The goal is to provide a clear outline of how each feature should work, including inputs, outputs, and system behavior.
+
+**Key Functional Areas** covered:
+
+1. **Dashboard** (Admin)
+2. **Appointments / Scheduling** (Admin + Customer)
+3. **Chat / Messaging** (Admin + Customer)
+4. **Payments & Invoicing** (Admin + Customer)
+5. **CRM / Customer Management** (Admin)
+6. **Route Management** (Admin)
+7. **Reviews / Feedback** (Admin + Customer)
+8. **Settings** (Admin)
+9. **Notifications & Reminders** (Admin + Customer)
+10. **Optional: AI Chat Assistant** (Admin + Customer)
+
+---
+
+# **2. Dashboard (Admin)**
+
+### **2.1 Overview**
+
+- The Dashboard is the **first screen** an Admin sees after logging in.
+- Presents key metrics and provides quick access to common actions.
+
+### **2.2 Functionality**
+
+1. **Key Metrics / Stats**
+    - **Appointments Today**: Number of scheduled appointments for the current day.
+        - Clicking this metric navigates to the Appointment page with a daily filter.
+    - **Outstanding Invoices**: Count and total amount unpaid.
+        - Clicking opens Payments & Invoices with a filter for unpaid invoices.
+    - **Unread Messages**: Shows number of open chat threads or unread messages.
+        - Clicking opens Chat / Messages.
+    - **Pending Reviews**: Number of customer reviews awaiting approval.
+        - Clicking opens Reviews / Feedback.
+2. **Quick Actions**
+    - **+ New Appointment**: Opens the “Create Appointment” flow (date/time picker, customer search).
+    - **Send Invoice**: Opens a form to create a new invoice for a selected customer.
+    - **Route Planner** (if implemented): Opens the Route Management screen with today’s appointments.
+3. **Upcoming Appointments**
+    - Lists next few upcoming bookings (time, customer name, location).
+    - Links to the full Appointment schedule.
+4. **Recent Activity**
+    - Scrollable feed of recent system events: new bookings, completed payments, new reviews, etc.
+    - Clicking an item takes the admin to the relevant detail (appointment detail, invoice detail, etc.).
+5. **Optional: Map/Route Preview**
+    - If the system has route optimization, a mini-map can show the day’s route and stops.
+
+---
+
+# **3. Appointments / Scheduling**
+
+The Appointment module serves both **Admin** and **Customer** user flows.
+
+## **3.1 Admin Perspective**
+
+### **3.1.1 Appointments List / Calendar**
+
+- **Calendar View**:
+    - Toggle between Day / Week / Month view.
+    - Color-coded appointments by status (e.g., Pending, Confirmed, Completed).
+    - Clicking an appointment opens its details in a side-pane or modal.
+- **List View**:
+    - Filter by date range, status, or technician.
+    - Search by customer name or address.
+
+### **3.1.2 Appointment Details**
+
+- **Core Data**: Customer name, service type, date/time, address, any special instructions.
+- **Actions**:
+    - **Reschedule**: Change date/time (prompts the customer via notification).
+    - **Cancel**: Optionally include reason for cancellation; notifies customer.
+    - **Mark Complete**: Closes the appointment, triggers post-service follow-up or review prompt.
+    - **Add Notes**: Internal notes only visible to Admin/staff.
+
+### **3.1.3 Create / Edit Appointments**
+
+- **Form Fields**:
+    - **Customer**: Existing or new. If new, minimal data (name, phone/email, address).
+    - **Date/Time**: Start/end or approximate window.
+    - **Service Details**: Type of service (e.g., termite treatment), technician assignment, etc.
+    - **Reminders**: Option to configure how many days/hours before the appointment the customer is notified.
+
+### **3.1.4 Notifications**
+
+- On booking creation or reschedule, the system sends:
+    - **Email/SMS**: “You have an appointment scheduled on [date/time].”
+    - **Push Notification** (if using mobile app).
+
+## **3.2 Customer Perspective**
+
+- **View Available Slots**: The customer sees open time windows.
+- **Request / Book Appointment**: They can pick a slot, confirm service details, and get a confirmation.
+- **Reschedule / Cancel**: If the policy allows, customers can change or cancel an upcoming appointment.
+- **Appointment History**: Past appointments, service notes, and any associated invoices.
+
+---
+
+# **4. Chat / Messaging**
+
+## **4.1 Admin Perspective**
+
+### **4.1.1 Conversation List**
+
+- Displays all ongoing or recent conversations in a left panel (Web) or a scrollable list (Mobile).
+- Shows basic info: Customer name, last message snippet, and timestamp.
+
+### **4.1.2 Conversation Detail**
+
+- Threaded chat view with time stamps.
+- **Message Input**: Admin can type a response or attach images/files.
+- **AI Draft Option** (optional): If integrated, the system can suggest replies or handle FAQs.
+- **Customer Info Shortcut**: A button or side pane to view the customer’s details (appointment history, open invoices).
+
+### **4.1.3 Automated Messaging**
+
+- **Auto-Responses**: For after-hours or first contact, the system can send an automated greeting.
+- **Templates**: Admin can store common responses for quick reuse.
+
+## **4.2 Customer Perspective**
+
+- **In-App Chat**: Real-time chat from within the mobile or web client portal.
+- **SMS / Text**: If the system uses Twilio or similar, customers can reply via text, and the admin sees it in the same chat interface.
+
+---
+
+# **5. Payments & Invoicing**
+
+## **5.1 Admin Perspective**
+
+### **5.1.1 Payment Dashboard**
+
+- Displays summary stats (total outstanding, overdue, paid this month).
+- Search/filter by invoice number, customer name, date range, or status.
+
+### **5.1.2 Invoice List / Table**
+
+- Columns: Invoice #, Customer, Amount, Due Date, Status, etc.
+- Each row clickable to view invoice detail.
+
+### **5.1.3 Invoice Detail**
+
+- **Line Items**: Service descriptions, quantities, rates.
+- **Payment History**: Any partial or full payments recorded.
+- **Actions**:
+    - **Send Reminder**: Emails/SMS with a link to pay.
+    - **Mark as Paid**: If payment received offline.
+    - **Refund**: If integrated with payment gateway (partial or full).
+    - **Edit Invoice**: If the invoice is not yet paid, or if partial payments are allowed.
+
+### **5.1.4 Create New Invoice**
+
+- **Form Fields**:
+    - Customer selection (existing or new).
+    - Service line items (description, quantity, rate).
+    - Taxes, discounts, or fees.
+    - Payment terms (due date, partial payments allowed, etc.).
+- **Send to Customer**: Immediately notifies the customer with an invoice link.
+
+## **5.2 Customer Perspective**
+
+- **View Invoice**: Access via the app or a secure web link.
+- **Make Payment**: Integrates with Stripe, PayPal, or chosen gateway.
+- **Payment Confirmation**: Customer receives a receipt by email/SMS.
+- **View Payment History**: All past invoices, amounts, and statuses in their account portal.
+
+---
+
+# **6. CRM / Customer Management**
+
+## **6.1 Admin Perspective**
+
+### **6.1.1 Customer List**
+
+- Table of all customers, with columns: Name, Address, Phone/Email, Last Appointment, etc.
+- Search/filter by name, location, or appointment history.
+
+### **6.1.2 Customer Detail View**
+
+- **Overview**: Basic contact info, default service address.
+- **Service History**: List of past and upcoming appointments.
+- **Payment History**: All invoices and payment statuses.
+- **Notes**: Internal notes about preferences, issues, etc.
+- **Quick Actions**: “New Appointment,” “Send Invoice,” “Open Chat,” etc.
+
+### **6.1.3 Bulk Actions (optional)**
+
+- Select multiple customers to send promotional emails or appointment reminders.
+
+---
+
+# **7. Route Management**
+
+## **7.1 Admin Perspective**
+
+### **7.1.1 Map View**
+
+- Pins for each appointment location on a map for a selected date or range.
+- Option to filter by technician if multiple staff members.
+
+### **7.1.2 Route Optimization**
+
+- Button: **Optimize Route** automatically orders the appointments by shortest driving distance.
+- **Manual Adjustments**: Drag-and-drop appointments to reorder if needed.
+
+### **7.1.3 Route Summary**
+
+- Displays the final route list: appointment times, addresses, and estimated travel time.
+- **Send Notifications**: “On the way” message to next customer in the route.
+
+---
+
+# **8. Reviews / Feedback**
+
+## **8.1 Admin Perspective**
+
+### **8.1.1 Pending Reviews**
+
+- List of new submissions from customers.
+- Displays star rating, text snippet, date submitted.
+- **Actions**:
+    - Approve: Publishes the review (internally or externally).
+    - Reject: Discards the review or marks as spam.
+    - Optional: Edit (if allowed, e.g., removing profanity).
+
+### **8.1.2 Approved Reviews**
+
+- List of reviews that are already live.
+- Option to show them on the business website or marketing materials.
+- Sorting/filtering by rating, date, or customer name.
+
+### **8.1.3 Review Notifications**
+
+- Admin can get an alert or email when a new review is submitted.
+
+## **8.2 Customer Perspective**
+
+- **Prompted after Service**: Customer receives an email/SMS or in-app notification to rate or write a review.
+- **Submit Review**: Star rating, optional text feedback, potentially photos.
+- **Visibility**: Customer sees that their review is pending approval before it’s published.
+
+---
+
+# **9. Settings (Admin)**
+
+## **9.1 General Settings**
+
+- **Business Info**: Company name, address, logo, contact details, etc.
+- **Operating Hours**: Default time range for appointments each day.
+
+## **9.2 Payment Settings**
+
+- **Payment Gateway Credentials**: Stripe, PayPal, etc.
+- **Invoice Templates**: Default disclaimers, business logos, terms.
+- **Taxes & Fees**: Set region-specific tax rates or surcharges.
+
+## **9.3 Notifications Settings**
+
+- **SMS/Email Templates**: Appointment confirmation, reminders, payment reminders.
+- **Timing**: Decide how many hours/days before an appointment or invoice due date to send notifications.
+
+## **9.4 User Management**
+
+- **Admin / Staff Roles**: Create or remove accounts.
+- **Permissions**: Restrict certain roles to read-only or limited sections.
+
+## **9.5 Integrations**
+
+- **Accounting Systems** (QuickBooks, Xero) if needed.
+- **LLM / AI Chat Assistant** keys or tokens.
+- **Webhook / API Keys** for third-party systems.
+
+---
+
+# **10. Notifications & Reminders**
+
+## **10.1 Notification Types**
+
+1. **Appointment Confirmations & Reminders**
+2. **Payment Reminders & Invoice Links**
+3. **Review Requests**
+4. **Chat / Message Alerts**
+5. **Route / Technician On-The-Way** notifications (optional)
+
+## **10.2 Delivery Channels**
+
+- **Email**: For official communication (invoices, confirmations).
+- **SMS**: Quick updates, especially time-sensitive reminders.
+- **Push Notifications** (Mobile App): Real-time alerts for messages, schedule changes.
+
+## **10.3 Admin Control**
+
+- Admin sets the default message templates and timing rules in **Settings**.
+- Admin can override or manually trigger certain notifications (e.g., re-send an invoice link).
+
+---
+
+# **11. Optional: AI Chat Assistant**
+
+## **11.1 Overview**
+
+- Integrates an **LLM** (OpenAI API or similar) to assist with repetitive customer queries.
+- Provides “draft responses” or auto-respond outside of business hours.
+
+## **11.2 Functionality**
+
+1. **Auto-Reply to FAQs**
+    - The system recognizes certain triggers (e.g., “How much do you charge?”) and responds with a templated or AI-generated message.
+2. **Human-in-the-Loop**
+    - Admin can review or edit AI suggestions before sending.
+3. **Fallback**
+    - If AI is uncertain, it flags the conversation for manual admin response.
+4. **Logging**
+    - All AI responses are logged for compliance and improvement.
+
+---
+
+# **12. Security & Access**
+
+1. **Secure Authentication**
+    - Password-hashing, two-factor authentication (optional).
+2. **Role-Based Access Control**
+    - Restricts specific features to Admin, Manager, or Technician roles.
+3. **Encrypted Data Storage**
+    - Sensitive data (e.g., payment info, customer records) stored securely.
+4. **Payment Compliance**
+    - PCI-DSS compliance for handling credit card information.
+
+---
+
+# **13. Reporting & Analytics** (Optional / Future)
+
+1. **Performance Dashboard**
+    - Number of new appointments vs. completed, revenue trends, average invoice, etc.
+2. **Technician Performance** (if relevant)
+    - Completed jobs, satisfaction ratings, route efficiency.
+3. **Review Trends**
+    - Overall rating distribution, top complaints, etc.
+
+---
+
+# **14. User Flows Summary**
+
+Below is a quick recap of primary user flows for both Admin and Customer:
+
+1. **Admin Logs In**
+    1. Sees Dashboard metrics.
+    2. Can navigate to Appointments, Chat, Payments, etc.
+2. **Customer Requests Appointment**
+    1. Customer picks date/time from availability.
+    2. Admin sees booking in the Appointments module.
+    3. System sends confirmation to customer.
+3. **Admin Schedules & Routes**
+    1. Admin creates a day’s schedule, sees all appointments on a map.
+    2. Optimizes route if needed, notifies customers of arrival times.
+4. **Admin Invoices & Payment**
+    1. Admin creates or updates invoice.
+    2. Customer pays online.
+    3. Admin sees real-time payment status update.
+5. **Chat / Customer Support**
+    1. Customer initiates chat.
+    2. Admin or AI assistant responds.
+    3. Chat logs stored in the system for future reference.
+6. **Reviews**
+    1. System prompts the customer post-service for feedback.
+    2. Admin reviews and approves.
+    3. Approved reviews show up on the business’s website or marketing.
+
+---
+
+# **15. Final Notes & Next Steps**
+
+- This **Functionality Doc** should be used in tandem with **Wireframes/UI Designs** to ensure alignment between the described features and the interface.
+- Any **edge cases** (e.g., partial payments, scheduling overlaps, offline invoice handling) must be identified and documented as the project progresses.
+- **Testing & QA** processes should verify each function described here, ensuring the system meets the requirements and performs reliably.
+
+---
+
+**End of Functionality Document**
+
+This document offers a **comprehensive overview** of how each module in the Beckham Pest Control app should function, from **user flows** to **data handling** and **system interactions**. Further detailed specification (e.g., data model schemas, exact API endpoints, and final UI mockups) should be developed in collaboration with designers, developers, and stakeholders to complete the full software design.

@@ -1,0 +1,241 @@
+Below is a **Product Requirements Document (PRD)** outline for the **Beckham Pest Control Mobile & Web App**. This PRD is designed to be a living document; it should be updated as requirements evolve or become more detailed.
+
+---
+
+## **1. Introduction**
+
+**Product Name:** Beckham Pest Control Mobile & Web App
+
+**Document Purpose:** Define the requirements, scope, and functionalities for both the Customer-facing (End User) and Owner/Admin (Business Management) interfaces.
+
+---
+
+## **2. Product Overview & Objectives**
+
+- **Business Goal:** Provide a seamless, modern customer experience for booking and managing pest control services, while also offering a robust backend for the business owner to handle scheduling, communication, payment, and CRM tasks.
+- **Primary Objectives:**
+    1. **Streamline customer interactions** via chat, scheduling, and automated notifications.
+    2. **Optimize operational efficiency** through route management, invoice tracking, and integrated CRM.
+    3. **Enhance revenue collection** with online payment integrations, billing, and reminders.
+    4. **Build customer loyalty** with an improved service experience, easy follow-ups, and review prompts.
+
+---
+
+## **3. Project Scope**
+
+The project will deliver:
+
+1. **Customer-Facing Mobile & Web App** (iOS, Android, and browser-based)
+2. **Owner/Admin Dashboard** (browser-based with mobile-responsive design)
+
+**In Scope**
+
+- Chat and messaging functionality (in-app chat, SMS integration, possible LLM-powered chatbot).
+- Scheduling system with calendar management and customer-facing booking.
+- Payment gateway integration for invoicing, receipts, and reminders.
+- CRM functionalities for storing and accessing customer data.
+- Automated notifications and reminders (SMS, push notifications, email).
+- Review management system for gathering and approving customer feedback.
+
+**Out of Scope** (for initial release, unless specifically added later)
+
+- Advanced AI features beyond basic chatbot support.
+- Enterprise-level marketing automation (e.g., large-scale email campaigns) unless integrated as a simple promotional feature.
+- Detailed GPS tracking beyond route optimization unless specifically requested.
+
+---
+
+## **4. Functional Requirements**
+
+### 4.1 **Customer Interface (End User App/Web Portal)**
+
+1. **User Registration & Authentication**
+    - Sign up via email or phone number.
+    - Password reset and account management features.
+2. **Chat Communication**
+    - In-app direct messaging or SMS-based conversation with business.
+    - Ability to upload images or attachments (e.g., pictures of pests).
+    - Option for a chatbot to handle FAQs (e.g., pricing, availability).
+3. **Appointment Scheduling**
+    - View the next available appointment times.
+    - Request an appointment and receive real-time confirmations or scheduling updates.
+    - Allow users to cancel or reschedule if needed.
+4. **Automated Reminders**
+    - Push notification or SMS reminders for upcoming service.
+    - Follow-up reminders to schedule next service if needed.
+5. **Payments & Billing**
+    - View invoices in the app/portal.
+    - Secure payment through integrated gateways (Stripe, PayPal, etc.).
+    - Option to set up recurring payments or auto-pay for subscription-based services.
+6. **CRM Integration**
+    - Display a history of past services.
+    - Show upcoming appointments and payment status.
+    - Provide quick rebooking links for recurring services.
+7. **User Reviews & Feedback**
+    - Prompt after service completion to rate/review.
+    - Submit text reviews; optional image attachments.
+    - Display selected or approved reviews in the customer portal or public site.
+
+---
+
+### 4.2 **Admin Interface (Business Owner Dashboard)**
+
+1. **Live Chat & Communication**
+    - Unified inbox for chat or SMS messages.
+    - Ability to respond manually or allow an LLM-powered assistant to draft replies.
+2. **Appointment & Route Management**
+    - Calendar view of scheduled appointments.
+    - Assign routes to technicians or staff.
+    - Automated route optimization based on geographic location.
+    - Tools to send notifications to customers about arrival times or delays.
+3. **Payment & Invoicing**
+    - Generate and send invoices via email/SMS.
+    - Track paid, overdue, and outstanding invoices.
+    - Integrate with accounting software (e.g., QuickBooks, Xero) if needed.
+4. **CRM & Customer History**
+    - Store and access detailed customer records (contact info, address, service history, payments).
+    - Search and filter by location, service type, or specific date range.
+    - Quick actions to create new appointments or send invoices directly from the customer record.
+5. **Review & Reputation Management**
+    - Approve or reject customer reviews before they are published.
+    - Option to highlight positive reviews on the website or app.
+6. **Analytics & Reporting (Optional but Recommended)**
+    - Dashboard to visualize daily/weekly/monthly performance.
+    - Metrics on new vs. returning customers, top services, average time to close tickets, etc.
+
+---
+
+## **5. Non-Functional Requirements**
+
+1. **Performance**
+    - App should load within 2 seconds on average.
+    - Chat functionality should have near real-time response.
+2. **Security**
+    - All customer data, including payment info, must be stored securely (PCI-DSS compliance for payments).
+    - User authentication with secure password protocols; consider 2FA.
+3. **Scalability**
+    - The system should handle thousands of appointments and user interactions per day without degradation.
+    - Modular architecture to easily integrate additional features or microservices (e.g., new LLM models).
+4. **Reliability & Availability**
+    - Target 99.9% uptime, with minimal service windows for maintenance.
+    - Automated backups for user data and transaction history.
+5. **Usability**
+    - Intuitive interface with minimal steps for booking and payment.
+    - Mobile-responsive dashboard and user-friendly navigation.
+
+---
+
+## **6. User Stories / Use Cases**
+
+Below are representative user stories to guide development and testing:
+
+1. **Customer Books an Appointment**
+    - *As a customer, I want to see available dates/times so that I can schedule a pest control service at my convenience.*
+2. **Owner Manages Daily Route**
+    - *As a business owner, I want to view all appointments on a map and generate an efficient route, so technicians can minimize travel time and costs.*
+3. **Customer Pays Invoice**
+    - *As a customer, I want to securely pay my invoice online, so I don’t have to handle cash or checks in person.*
+4. **Owner Reviews Customer Feedback**
+    - *As a business owner, I want to read and approve customer reviews, so I can display only valid and appropriate feedback publicly.*
+5. **LLM-Powered Chatbot**
+    - *As a business owner, I want a chatbot that can handle FAQs, so that basic customer queries are answered automatically without my intervention.*
+
+---
+
+## **7. Technology Stack**
+
+Based on the stated preferences and requirements:
+
+1. **Frontend**
+    - **Mobile:** React Native for cross-platform development.
+    - **Web:** React or Next.js for a fast, SEO-friendly web interface.
+2. **Backend**
+    - Node.js/Express or Python/Django (depending on the team’s expertise).
+    - REST or GraphQL API.
+3. **Database**
+    - Relational DB (PostgreSQL) or document store (MongoDB) if flexible schema is needed.
+4. **Messaging & Notifications**
+    - **SMS:** Twilio or similar provider.
+    - **Push Notifications:** Firebase Cloud Messaging (FCM).
+5. **Payments**
+    - Stripe or PayPal for secure credit card transactions.
+6. **LLM/AI Integration** (Optional)
+    - OpenAI API, Hugging Face, or local deployment for chatbot features.
+
+---
+
+## **8. Implementation Plan & Milestones**
+
+Below is a high-level roadmap (timelines are estimates and should be refined after further scoping):
+
+1. **Phase 1: Requirements & Design (2–4 weeks)**
+    - Finalize UI/UX wireframes.
+    - Technical architecture review.
+    - Confirm third-party integrations (Twilio, Stripe, etc.).
+2. **Phase 2: Core Development (6–8 weeks)**
+    - Implement user registration, authentication, and profile.
+    - Develop scheduling & calendar modules.
+    - Basic CRM for storing customer data & appointments.
+    - Integrate payment gateways.
+    - Develop chat functionality (in-app/SMS).
+3. **Phase 3: Admin Dashboard & Advanced Features (4–6 weeks)**
+    - Build out the full admin portal for route management and invoice tracking.
+    - Integrate LLM chatbot for common questions (if included in MVP).
+    - Implement review management system.
+4. **Phase 4: Testing & QA (2–4 weeks)**
+    - Conduct unit, integration, and user acceptance testing.
+    - Performance and security testing.
+5. **Phase 5: Launch & Stabilization (1–2 weeks)**
+    - Deploy to production environment.
+    - Monitor app performance and fix critical issues.
+
+*(Timelines may overlap or shift based on resources and unforeseen complexities.)*
+
+---
+
+## **9. Risks & Mitigation**
+
+1. **Scope Creep**: Define strict feature set for MVP and clearly prioritize additional features.
+2. **Third-Party Dependencies**: Plan for fallback solutions if an API (e.g., Twilio, Stripe) has downtime.
+3. **Data Security & Compliance**: Establish secure coding practices and routine audits, especially for payments and personal data.
+4. **LLM Limitations**: Chatbots can produce inaccurate or inappropriate responses. Implement guardrails and fallback to human oversight where necessary.
+
+---
+
+## **10. Success Metrics**
+
+- **Customer Adoption**: Measured by user registrations and active usage rates.
+- **Booking Efficiency**: Reduced manual scheduling time and fewer missed appointments.
+- **Payment Collection**: Faster invoice settlements and reduced outstanding balances.
+- **Customer Satisfaction**: Positive reviews, feedback forms, and reduced customer service complaints.
+
+---
+
+## **11. Future Enhancements**
+
+- **GPS Tracking** for real-time technician location updates.
+- **Advanced Marketing Automation** for upsells, targeted messaging, and drip campaigns.
+- **Inventory Management** for chemicals and supplies used in pest control services.
+- **Integration with Smart Home Devices** to monitor pest activity.
+
+---
+
+## **12. Approvals & Contact Information**
+
+- **Product Owner/Client:** [Name & Contact]
+- **Project Manager:** [Name & Contact]
+- **Development Team Lead:** [Name & Contact]
+- **Design Lead:** [Name & Contact]
+
+---
+
+### **Next Steps**
+
+1. **Finalize Requirements**: Validate features and priorities with stakeholders.
+2. **Create User Flows & Wireframes**: Begin design phase.
+3. **Technical Architecture**: Confirm the tech stack and any hosting requirements.
+4. **Project Plan & Budget**: Align resources and finalize timeline.
+
+---
+
+**End of PRD**

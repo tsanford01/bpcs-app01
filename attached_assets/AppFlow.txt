@@ -1,0 +1,329 @@
+Below is a **high-level App Flow Document** that describes the **user journeys** for both **Admin (Business Owner)** and **Customer** in the Beckham Pest Control application. Think of this as a guide to how each type of user navigates the system, from onboarding to core features.
+
+---
+
+# **1. Introduction**
+
+The Beckham Pest Control platform has **two main user types**:
+
+1. **Customer (End User):**
+    - Accesses the system via **mobile app** or **web portal** to schedule services, pay bills, and communicate with the business.
+2. **Admin/Business Owner:**
+    - Uses a **web dashboard** (and possibly a mobile-responsive version) to manage appointments, payments, routes, chat, and more.
+
+This **App Flow Document** outlines the **key screens**, **entry points**, and **paths** each user might take through the app.
+
+---
+
+# **2. Customer (End User) App Flow**
+
+## **2.1 Onboarding & Login**
+
+1. **Splash/Welcome Screen**
+    - Brief introduction or brand logo.
+2. **Sign Up / Login**
+    - **New User**: Create an account with email/phone, set password.
+    - **Returning User**: Login with existing credentials.
+    - (Optional) **Social Login** (e.g., Google, Facebook) or SMS-based OTP.
+3. **Account Setup**
+    - **Basic Info**: Name, phone number, email.
+    - **Service Address**: Option to add multiple addresses.
+    - **Notifications Opt-In**: Ask user to allow push notifications for reminders.
+
+*(After successful login, user lands on the Customer Dashboard.)*
+
+---
+
+## **2.2 Customer Dashboard**
+
+1. **Appointments Overview**
+    - Lists upcoming appointments and statuses.
+    - “Book New Service” button.
+2. **Notifications/Reminders**
+    - System alerts for upcoming appointments, pending payments, or chat messages.
+3. **Main Menu / Navigation**
+    - Typically a bottom tab bar or side menu:
+        - **Home/Dashboard**
+        - **Appointments**
+        - **Payments**
+        - **Chat**
+        - **Profile/Settings**
+
+---
+
+## **2.3 Booking / Scheduling Flow**
+
+1. **Initiate Booking**
+    - Tap “Book Appointment” or “New Service.”
+2. **Select Service Type**
+    - Example: General Pest Control, Termite Inspection, etc.
+    - (Optional) Show estimated pricing or package info.
+3. **Choose Date & Time**
+    - Displays available slots or calendar.
+    - User selects preferred slot.
+4. **Confirm Appointment**
+    - Review details (address, service notes).
+    - Final “Book Now” button.
+5. **Confirmation**
+    - App shows “Appointment Confirmed!”
+    - Email/SMS/push notification is sent with appointment summary.
+
+---
+
+## **2.4 Payment Flow**
+
+1. **View Invoices/Bills**
+    - Under **Payments** tab, see all open/past invoices.
+2. **Select Invoice to Pay**
+    - Displays amount due, due date, and service details.
+3. **Payment Method**
+    - Choose credit card, PayPal, or other integrated gateway.
+    - (Optional) Save card info for faster future payments.
+4. **Confirm Payment**
+    - Payment processed via secure gateway.
+    - If successful, user sees “Payment Success!”
+    - Receipt emailed/SMS’d to user.
+
+---
+
+## **2.5 Chat & Communication**
+
+1. **Open Chat**
+    - Accessible via a “Chat” icon or “Messages” section.
+2. **Send Message**
+    - User can type a question, attach photos (e.g., picture of pests).
+3. **Receive Responses**
+    - Real-time messages from the Admin or AI assistant.
+    - Push notifications for new replies.
+
+---
+
+## **2.6 Post-Service Review**
+
+1. **Prompt for Review**
+    - After an appointment is marked complete by Admin, user gets a notification: “Please rate your service.”
+2. **Submit Review**
+    - Star rating + text feedback.
+    - (Optional) Photo attachment of results or issues.
+3. **Review Confirmation**
+    - User sees “Thanks for your feedback!” message.
+
+---
+
+## **2.7 Profile & Settings**
+
+1. **View/Edit Profile**
+    - Update name, phone, email, password.
+    - Manage addresses.
+2. **Notification Preferences**
+    - Toggle email/SMS/push reminders.
+3. **Logout**
+    - Logs out of the current session.
+
+---
+
+# **3. Admin / Business Owner Flow**
+
+## **3.1 Login & Access**
+
+1. **Login Screen**
+    - Admin enters email/username & password.
+    - (Optionally) 2FA or OTP for additional security.
+2. **Dashboard Landing**
+    - Sees key metrics: appointments today, outstanding invoices, unread messages, pending reviews.
+
+---
+
+## **3.2 Admin Dashboard**
+
+- **Left Sidebar / Top Nav** (Web) or **Bottom Tabs** (Mobile-Responsive):
+    1. **Dashboard (Home)**
+    2. **Appointments**
+    3. **Chat**
+    4. **Payments & Invoices**
+    5. **CRM / Customer Management**
+    6. **Route Management**
+    7. **Reviews**
+    8. **Settings**
+
+---
+
+## **3.3 Appointments Management**
+
+1. **Calendar or List View**
+    - Displays upcoming appointments.
+    - Color codes or icons for status (Pending, Confirmed, Completed).
+2. **Appointment Detail**
+    - Customer info, date/time, location.
+    - **Actions**: Reschedule, Cancel, Mark Complete, Add Notes.
+3. **Create New Appointment**
+    - Pop-up form: pick customer (new/existing), set date/time, service type.
+    - Option to assign technician or staff.
+4. **Notifications**
+    - Auto-send to customers when created/rescheduled.
+
+---
+
+## **3.4 Chat / Messaging**
+
+1. **Conversation List**
+    - Shows all recent chat threads.
+    - Sort or filter by unread, newest, etc.
+2. **Open Chat**
+    - Threaded messages with a specific customer.
+    - **Reply**: Admin types or uses AI-suggested responses.
+3. **AI Assistant** (Optional)
+    - Admin can let AI handle FAQs or generate response drafts.
+4. **Attachments / Images**
+    - Admin can send documents or instructions back to the customer.
+
+---
+
+## **3.5 Payments & Invoices**
+
+1. **Invoice List**
+    - Table of all invoices: invoice #, customer, amount, status, due date.
+    - Filter by paid/unpaid/overdue.
+2. **Create / Edit Invoice**
+    - Add line items, select customer, set amounts/tax/discount.
+    - Send invoice to customer’s email or SMS link.
+3. **Mark as Paid / Partial Payment**
+    - If payment is received offline, admin marks invoice as paid.
+    - System updates Payment Status.
+4. **Payment Dashboard**
+    - Summaries: total outstanding, total overdue, total collected.
+
+---
+
+## **3.6 CRM / Customer Management**
+
+1. **Customer List**
+    - Each row: name, contact info, last appointment, outstanding invoices.
+2. **Customer Details**
+    - Shows complete history of appointments and payments.
+    - Internal notes.
+    - Quick actions: create appointment, generate invoice, open chat.
+3. **Add / Edit Customer**
+    - If a walk-in or phone inquiry, admin can create a new customer profile manually.
+
+---
+
+## **3.7 Route Management**
+
+1. **Map View**
+    - Pins for each scheduled appointment, color-coded by status or staff.
+    - **Optimize Route** button reorders stops by shortest driving distance.
+2. **Route List**
+    - Detailed itinerary: start time, address, travel time between stops.
+    - **Notifications**: “On the way” messages can be triggered.
+3. **Technician Assignment** (If multiple staff)
+    - Assign appointments or entire routes to specific technicians.
+
+---
+
+## **3.8 Reviews / Feedback**
+
+1. **Pending Reviews**
+    - A queue showing all new/unedited reviews from customers.
+2. **Approve / Reject**
+    - Admin checks for abusive language or spam.
+    - Approves valid reviews for publication.
+3. **Published Reviews**
+    - Displays all approved reviews.
+    - Could integrate with website or marketing materials.
+
+---
+
+## **3.9 Settings**
+
+1. **Business Settings**
+    - Update company name, logo, contact info, operating hours.
+2. **Payment Settings**
+    - Enter Stripe/PayPal keys.
+    - Define default tax rates, invoice templates.
+3. **User Management**
+    - Create new admin or staff accounts.
+    - Set permissions/roles.
+4. **Notification Templates**
+    - Edit email/SMS wording for appointment reminders, invoice reminders, etc.
+5. **Integrations**
+    - Accounting software (QuickBooks, Xero).
+    - AI Chat Assistant (OpenAI keys, etc.).
+
+---
+
+# **4. Notification Flow (Across Both User Types)**
+
+1. **System-Triggers**
+    - Appointment creation, change, or cancellation.
+    - Invoice creation or payment reminders.
+    - Review prompts after service is marked completed.
+2. **Delivery Channels**
+    - **Push Notifications** (if mobile app is installed).
+    - **SMS** (via Twilio or another service).
+    - **Email** (for formal communication like invoices/receipts).
+3. **Opt-In / Opt-Out**
+    - Customers manage preferences under their **Profile** or **Settings**.
+    - Admin can override or manually trigger certain notifications (e.g., send an extra reminder).
+
+---
+
+# **5. Logging Out & Session Management**
+
+1. **Customer**:
+    - **Logout** option in the profile/settings screen.
+    - If session expires, user is prompted to re-login.
+2. **Admin**:
+    - **Logout** in the main nav or account menu.
+    - Auto-logout after a period of inactivity (configurable).
+
+---
+
+# **6. Edge Case Flows**
+
+1. **Overlapping Appointments**
+    - If a time slot is double-booked, the system should prompt the admin or reject the second booking (depending on business rules).
+2. **Payment Failures**
+    - If a customer’s card is declined, the system shows an error and logs the failed transaction.
+3. **No Internet** (Mobile)
+    - For the customer app, if offline, show a “No Connection” banner.
+    - Queue chat messages or appointment requests for when the device reconnects.
+4. **Review Moderation**
+    - If Admin suspects spam or inappropriate content, they can reject or delete the review.
+5. **Partial Payments** (if enabled)
+    - Invoice remains partially paid until full amount is covered.
+
+---
+
+# **7. Summary Diagram (High-Level)**
+
+```
+[Customer]
+  └── (Sign Up / Login) -> (Home/Dashboard) ->
+      (Book Appointment) -> (Pay Invoice) -> (Chat) -> (Submit Review)
+
+[Admin/Business Owner]
+  └── (Login) -> (Admin Dashboard) ->
+       (Appointments) -> [Route Management, Chat, CRM, Payments, Reviews] -> (Settings)
+
+```
+
+Each arrow represents a **navigation path** or **user action**. Subflows exist for deeper functions (e.g., creating an invoice, approving a review).
+
+---
+
+# **8. Conclusion & Next Steps**
+
+This **App Flow Document** ensures all stakeholders understand how **Customers** and **Admins** traverse the Beckham Pest Control platform. Actual UI designs and wireframes will **visualize** each step, while user acceptance testing will **validate** these flows in practice.
+
+**Recommended Next Steps**:
+
+1. **Refine Wireframes** for each screen based on these flows.
+2. **Create Detailed User Stories** in a project management tool (e.g., Jira, Trello).
+3. **Develop & QA** each flow, ensuring edge cases are handled (payment failures, scheduling conflicts, etc.).
+
+---
+
+**End of App Flow Document**
+
+This outlines the **primary navigation paths**, **screen transitions**, and **system triggers** for both **Customers** and **Admins**. It serves as a high-level guide for developers, designers, and product stakeholders to ensure all parties have a unified vision of how users will interact with the Beckham Pest Control application.
