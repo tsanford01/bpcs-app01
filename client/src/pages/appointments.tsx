@@ -100,13 +100,16 @@ function RescheduleDialog({
       serviceType: appointment.serviceType,
       status: appointment.status,
       notes: appointment.notes || '',
-      location: appointment.location
+      location: appointment.location as { lat: number; lng: number } | null 
     }
   });
 
   const updateAppointment = useMutation({
     mutationFn: async (data: InsertAppointment) => {
-      const res = await apiRequest("PATCH", `/api/appointments/${appointment.id}`, data);
+      const res = await apiRequest("PATCH", `/api/appointments/${appointment.id}`, {
+        ...data,
+        location: appointment.location 
+      });
       if (!res.ok) {
         const error = await res.json();
         throw new Error(error.message || 'Failed to update appointment');
@@ -155,6 +158,7 @@ function RescheduleDialog({
                   <FormControl>
                     <Input
                       type="datetime-local"
+                      step="900" 
                       {...field}
                       value={
                         field.value
@@ -193,75 +197,10 @@ function RescheduleDialog({
   );
 }
 
-export default function Appointments() {
-  const { data: appointments = [] } = useQuery<Appointment[]>({
-    queryKey: ["/api/appointments"],
-  });
-
-  const { data: customers = [] } = useQuery<Customer[]>({
-    queryKey: ["/api/customers"],
-  });
-
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-
-  const dayAppointments = appointments.filter((apt) => {
-    const aptDate = new Date(apt.date);
-    return (
-      aptDate.getDate() === selectedDate.getDate() &&
-      aptDate.getMonth() === selectedDate.getMonth() &&
-      aptDate.getFullYear() === selectedDate.getFullYear()
-    );
-  });
-
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Appointments</h1>
-          <p className="text-muted-foreground">Manage your service schedule</p>
-        </div>
-        <NewAppointmentDialog customers={customers} />
-      </div>
-
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <div className="md:col-span-1">
-          <Calendar
-            mode="single"
-            selected={selectedDate}
-            onSelect={(date) => date && setSelectedDate(date)}
-            className="border rounded-lg"
-          />
-        </div>
-
-        <div className="md:col-span-1 lg:col-span-2 border rounded-lg p-4">
-          <h2 className="font-semibold mb-4">
-            Appointments for {format(selectedDate, "MMMM d, yyyy")}
-          </h2>
-          <div className="space-y-4">
-            {dayAppointments.length === 0 ? (
-              <p className="text-muted-foreground">No appointments scheduled</p>
-            ) : (
-              dayAppointments.map((apt) => (
-                <AppointmentItem
-                  key={apt.id}
-                  appointment={apt}
-                  customer={customers.find((c) => c.id === apt.customerId)}
-                />
-              ))
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Rest of the file (NewAppointmentDialog and AppointmentStatusButton) remains unchanged
 function NewAppointmentDialog({ customers }: { customers: Customer[] }) {
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
 
-  // Initialize form with default values
   const form = useForm<InsertAppointment>({
     resolver: zodResolver(insertAppointmentSchema),
     defaultValues: {
@@ -270,7 +209,7 @@ function NewAppointmentDialog({ customers }: { customers: Customer[] }) {
       serviceType: undefined,
       status: 'pending',
       notes: '',
-      location: { lat: 0, lng: 0 }  // Default location
+      location: { lat: 0, lng: 0 }  
     }
   });
 
@@ -362,6 +301,7 @@ function NewAppointmentDialog({ customers }: { customers: Customer[] }) {
                   <FormControl>
                     <Input
                       type="datetime-local"
+                      step="900" 
                       {...field}
                       value={
                         field.value
@@ -373,7 +313,6 @@ function NewAppointmentDialog({ customers }: { customers: Customer[] }) {
                         if (inputDate) {
                           const date = new Date(inputDate);
                           if (!isNaN(date.getTime())) {
-                            // Ensure timezone offset is properly handled
                             const userTimezoneOffset = date.getTimezoneOffset() * 60000;
                             const adjustedDate = new Date(date.getTime() - userTimezoneOffset);
                             field.onChange(adjustedDate.toISOString());
@@ -469,5 +408,68 @@ function AppointmentStatusButton({ appointment }: { appointment: Appointment }) 
         <SelectItem value="cancelled">Cancelled</SelectItem>
       </SelectContent>
     </Select>
+  );
+}
+
+export default function Appointments() {
+  const { data: appointments = [] } = useQuery<Appointment[]>({
+    queryKey: ["/api/appointments"],
+  });
+
+  const { data: customers = [] } = useQuery<Customer[]>({
+    queryKey: ["/api/customers"],
+  });
+
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+
+  const dayAppointments = appointments.filter((apt) => {
+    const aptDate = new Date(apt.date);
+    return (
+      aptDate.getDate() === selectedDate.getDate() &&
+      aptDate.getMonth() === selectedDate.getMonth() &&
+      aptDate.getFullYear() === selectedDate.getFullYear()
+    );
+  });
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Appointments</h1>
+          <p className="text-muted-foreground">Manage your service schedule</p>
+        </div>
+        <NewAppointmentDialog customers={customers} />
+      </div>
+
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="md:col-span-1">
+          <Calendar
+            mode="single"
+            selected={selectedDate}
+            onSelect={(date) => date && setSelectedDate(date)}
+            className="border rounded-lg"
+          />
+        </div>
+
+        <div className="md:col-span-1 lg:col-span-2 border rounded-lg p-4">
+          <h2 className="font-semibold mb-4">
+            Appointments for {format(selectedDate, "MMMM d, yyyy")}
+          </h2>
+          <div className="space-y-4">
+            {dayAppointments.length === 0 ? (
+              <p className="text-muted-foreground">No appointments scheduled</p>
+            ) : (
+              dayAppointments.map((apt) => (
+                <AppointmentItem
+                  key={apt.id}
+                  appointment={apt}
+                  customer={customers.find((c) => c.id === apt.customerId)}
+                />
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
