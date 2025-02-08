@@ -120,13 +120,31 @@ function NewAppointmentDialog({ customers }: { customers: Customer[] }) {
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
 
+  // Initialize form with default values
   const form = useForm<InsertAppointment>({
     resolver: zodResolver(insertAppointmentSchema),
+    defaultValues: {
+      customerId: undefined,
+      date: new Date().toISOString(),
+      serviceType: undefined,
+      status: 'pending',
+      notes: '',
+      location: null
+    }
   });
 
   const createAppointment = useMutation({
     mutationFn: async (data: InsertAppointment) => {
-      const res = await apiRequest("POST", "/api/appointments", data);
+      // Ensure date is properly formatted as ISO string
+      const formattedData = {
+        ...data,
+        date: new Date(data.date).toISOString()
+      };
+      const res = await apiRequest("POST", "/api/appointments", formattedData);
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || 'Failed to create appointment');
+      }
       return res.json();
     },
     onSuccess: () => {
@@ -176,7 +194,7 @@ function NewAppointmentDialog({ customers }: { customers: Customer[] }) {
                   <FormLabel>Customer</FormLabel>
                   <Select
                     onValueChange={(value) => field.onChange(Number(value))}
-                    defaultValue={field.value?.toString()}
+                    value={field.value?.toString()}
                   >
                     <FormControl>
                       <SelectTrigger>
@@ -212,9 +230,14 @@ function NewAppointmentDialog({ customers }: { customers: Customer[] }) {
                       value={
                         field.value
                           ? new Date(field.value).toISOString().slice(0, 16)
-                          : ""
+                          : new Date().toISOString().slice(0, 16)
                       }
-                      onChange={(e) => field.onChange(new Date(e.target.value))}
+                      onChange={(e) => {
+                        const date = new Date(e.target.value);
+                        if (!isNaN(date.getTime())) {
+                          field.onChange(date.toISOString());
+                        }
+                      }}
                     />
                   </FormControl>
                   <FormMessage />
@@ -230,7 +253,7 @@ function NewAppointmentDialog({ customers }: { customers: Customer[] }) {
                   <FormLabel>Service Type</FormLabel>
                   <Select
                     onValueChange={field.onChange}
-                    defaultValue={field.value}
+                    value={field.value}
                   >
                     <FormControl>
                       <SelectTrigger>
@@ -241,9 +264,7 @@ function NewAppointmentDialog({ customers }: { customers: Customer[] }) {
                       <SelectItem value="general">General Pest Control</SelectItem>
                       <SelectItem value="termite">Termite Treatment</SelectItem>
                       <SelectItem value="rodent">Rodent Control</SelectItem>
-                      <SelectItem value="mosquito">
-                        Mosquito Treatment
-                      </SelectItem>
+                      <SelectItem value="mosquito">Mosquito Treatment</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
