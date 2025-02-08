@@ -61,19 +61,19 @@ export default function Routes() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-12">
-        <Card className="md:col-span-4">
+        <Card className="md:col-span-4 h-fit">
           <CardHeader>
             <CardTitle>Schedule</CardTitle>
             <CardDescription>Select date to view appointments</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pb-4">
             <Calendar
               mode="single"
               selected={selectedDate}
               onSelect={(date) => date && setSelectedDate(date)}
               className="border rounded-lg mb-4"
             />
-            <ScrollArea className="h-[400px]">
+            <ScrollArea className="h-[400px] pr-4">
               {dayAppointments.length === 0 ? (
                 <p className="text-muted-foreground text-center">
                   No appointments for this day
@@ -112,7 +112,7 @@ export default function Routes() {
           <CardContent>
             <div className="h-[600px] rounded-lg overflow-hidden">
               <MapContainer
-                center={[40.7128, -74.0060] as L.LatLngExpression}
+                center={[40.3484, -111.7786] as L.LatLngExpression} // Utah County coordinates
                 zoom={11}
                 style={{ height: "100%", width: "100%" }}
                 scrollWheelZoom={false}

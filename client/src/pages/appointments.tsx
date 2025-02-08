@@ -39,6 +39,118 @@ import {
   InsertAppointment,
 } from "@shared/schema";
 
+function RescheduleDialog({ 
+  appointment, 
+  isOpen, 
+  onClose 
+}: { 
+  appointment: Appointment; 
+  isOpen: boolean; 
+  onClose: () => void;
+}) {
+  const { toast } = useToast();
+
+  const form = useForm<InsertAppointment>({
+    resolver: zodResolver(insertAppointmentSchema),
+    defaultValues: {
+      customerId: appointment.customerId,
+      date: appointment.date,
+      serviceType: appointment.serviceType,
+      status: appointment.status,
+      notes: appointment.notes || '',
+      location: appointment.location
+    }
+  });
+
+  const updateAppointment = useMutation({
+    mutationFn: async (data: InsertAppointment) => {
+      const res = await apiRequest("PATCH", `/api/appointments/${appointment.id}`, data);
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || 'Failed to update appointment');
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      onClose();
+      form.reset();
+      queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
+      toast({
+        title: "Appointment rescheduled",
+        description: "The appointment has been rescheduled successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Reschedule Appointment</DialogTitle>
+          <DialogDescription>
+            Update the appointment date and time
+          </DialogDescription>
+        </DialogHeader>
+
+        <Form {...form}>
+          <form
+            onSubmit={form.handleSubmit((data) => updateAppointment.mutate(data))}
+            className="space-y-4"
+          >
+            <FormField
+              control={form.control}
+              name="date"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Date & Time</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="datetime-local"
+                      {...field}
+                      value={
+                        field.value
+                          ? new Date(field.value).toISOString().slice(0, 16)
+                          : new Date().toISOString().slice(0, 16)
+                      }
+                      onChange={(e) => {
+                        const inputDate = e.target.value;
+                        if (inputDate) {
+                          const date = new Date(inputDate);
+                          if (!isNaN(date.getTime())) {
+                            const userTimezoneOffset = date.getTimezoneOffset() * 60000;
+                            const adjustedDate = new Date(date.getTime() - userTimezoneOffset);
+                            field.onChange(adjustedDate.toISOString());
+                          }
+                        }
+                      }}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={updateAppointment.isPending}
+            >
+              Update Appointment
+            </Button>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function Appointments() {
   const { data: appointments = [] } = useQuery<Appointment[]>({
     queryKey: ["/api/appointments"],
@@ -89,6 +201,8 @@ export default function Appointments() {
             ) : (
               dayAppointments.map((apt) => {
                 const customer = customers.find((c) => c.id === apt.customerId);
+                const [isRescheduling, setIsRescheduling] = useState(false);
+
                 return (
                   <div
                     key={apt.id}
@@ -97,14 +211,29 @@ export default function Appointments() {
                     <div>
                       <p className="font-medium">{customer?.name}</p>
                       <p className="text-sm text-muted-foreground">
-                        {format(new Date(apt.date), "h:mm a")} -{" "}
-                        {apt.serviceType}
+                        {format(new Date(apt.date), "h:mm a")} - {apt.serviceType}
                       </p>
                       <p className="text-sm text-muted-foreground">
                         {customer?.address}
                       </p>
                     </div>
-                    <AppointmentStatusButton appointment={apt} />
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsRescheduling(true)}
+                      >
+                        Reschedule
+                      </Button>
+                      <AppointmentStatusButton appointment={apt} />
+                    </div>
+                    {isRescheduling && (
+                      <RescheduleDialog
+                        appointment={apt}
+                        isOpen={isRescheduling}
+                        onClose={() => setIsRescheduling(false)}
+                      />
+                    )}
                   </div>
                 );
               })
