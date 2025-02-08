@@ -74,6 +74,9 @@ function TimeGrid({
     const appointmentEnd = addMinutes(slot.start, APPOINTMENT_DURATION);
 
     return appointments.some(apt => {
+      // Skip cancelled appointments
+      if (apt.status === 'cancelled') return false;
+
       const aptStart = new Date(apt.date);
       const aptEnd = addMinutes(aptStart, APPOINTMENT_DURATION);
       return (
@@ -109,6 +112,9 @@ function TimeGrid({
 
         // Check for overlapping appointments
         const overlappingAppointment = appointments.find(apt => {
+          // Skip cancelled appointments
+          if (apt.status === 'cancelled') return false;
+
           const aptStart = new Date(apt.date);
           const aptEnd = addMinutes(aptStart, APPOINTMENT_DURATION);
           return (
@@ -171,14 +177,14 @@ function TimeGrid({
                       slot.isAvailable
                         ? isHovered
                           ? hasOverlap
-                            ? "bg-red-100 border-red-200"
-                            : "bg-green-100 border-green-200"
+                            ? "bg-red-200 border-red-300"
+                            : "bg-green-200 border-green-300"
                           : "hover:bg-accent hover:text-accent-foreground"
-                        : "bg-primary/10 cursor-not-allowed"
+                        : "bg-primary/20 cursor-not-allowed"
                     )}
                   >
-                    {slot.appointment && (
-                      <div className="absolute inset-1 rounded bg-primary/20 p-1">
+                    {slot.appointment && slot.appointment.status !== 'cancelled' && (
+                      <div className="absolute inset-1 rounded bg-primary/30 p-1">
                         <p className="text-xs font-medium truncate">
                           {customer?.name}
                         </p>
@@ -593,7 +599,7 @@ export default function Appointments() {
   // Filter appointments for the selected date
   const selectedDateAppointments = useMemo(() => {
     return appointments.filter(apt =>
-      isSameDay(new Date(apt.date), selectedDate)
+      isSameDay(new Date(apt.date), selectedDate) && apt.status !== 'cancelled'
     ).sort((a, b) =>
       new Date(a.date).getTime() - new Date(b.date).getTime()
     );
