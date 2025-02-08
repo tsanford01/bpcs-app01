@@ -44,12 +44,14 @@ function formatDateForInput(date: Date): string {
   return date.toLocaleString('sv-SE').slice(0, 16);
 }
 
-// Utility function to parse input date
+// Utility function to parse input date with strict 15-minute intervals
 function parseInputDate(dateString: string): Date {
   const date = new Date(dateString);
   // Round to nearest 15 minutes
   const minutes = date.getMinutes();
-  const roundedMinutes = Math.round(minutes / 15) * 15;
+  const remainder = minutes % 15;
+  const roundedMinutes = remainder < 8 ? minutes - remainder : minutes + (15 - remainder);
+
   date.setMinutes(roundedMinutes);
   date.setSeconds(0);
   date.setMilliseconds(0);
@@ -176,7 +178,7 @@ function RescheduleDialog({
                   <FormControl>
                     <Input
                       type="datetime-local"
-                      step="900"
+                      step={900} // 15 minutes in seconds
                       {...field}
                       onChange={(e) => {
                         const inputDate = e.target.value;
@@ -311,7 +313,7 @@ function NewAppointmentDialog({ customers }: { customers: Customer[] }) {
                   <FormControl>
                     <Input
                       type="datetime-local"
-                      step="900"
+                      step={900} // 15 minutes in seconds
                       {...field}
                       onChange={(e) => {
                         const inputDate = e.target.value;

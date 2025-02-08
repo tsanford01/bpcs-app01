@@ -19,18 +19,7 @@ export function registerRoutes(app: Express): Server {
 
   // WebSocket connection handling with improved error handling
   wss.on('connection', (ws: ExtendedWebSocket, req) => {
-    const cookies = req.headers.cookie?.split(';').reduce((acc, cookie) => {
-      const [key, value] = cookie.trim().split('=');
-      acc[key] = value;
-      return acc;
-    }, {} as Record<string, string>);
-
-    const sessionId = cookies?.['connect.sid'];
-    if (!sessionId) {
-      console.error('[WS] No session ID found, closing connection');
-      ws.close(1008, 'Authentication required');
-      return;
-    }
+    console.log('[WS] New connection established');
 
     ws.isAlive = true;
 
@@ -43,7 +32,7 @@ export function registerRoutes(app: Express): Server {
       }
       ws.isAlive = false;
       ws.ping(() => {});
-    }, 15000); // Reduced to 15 seconds
+    }, 15000); // 15 seconds
 
     ws.on('pong', () => {
       ws.isAlive = true;
