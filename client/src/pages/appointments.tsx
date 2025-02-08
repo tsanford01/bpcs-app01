@@ -40,10 +40,10 @@ import {
 } from "@shared/schema";
 
 // Separate component for each appointment item
-function AppointmentItem({ 
-  appointment, 
-  customer 
-}: { 
+function AppointmentItem({
+  appointment,
+  customer
+}: {
   appointment: Appointment;
   customer: Customer | undefined;
 }) {
@@ -82,13 +82,13 @@ function AppointmentItem({
 }
 
 // RescheduleDialog component with improved date handling
-function RescheduleDialog({ 
-  appointment, 
-  isOpen, 
-  onClose 
-}: { 
-  appointment: Appointment; 
-  isOpen: boolean; 
+function RescheduleDialog({
+  appointment,
+  isOpen,
+  onClose
+}: {
+  appointment: Appointment;
+  isOpen: boolean;
   onClose: () => void;
 }) {
   const { toast } = useToast();
@@ -101,7 +101,7 @@ function RescheduleDialog({
       serviceType: appointment.serviceType,
       status: appointment.status,
       notes: appointment.notes || '',
-      location: appointment.location as { lat: number; lng: number } | null 
+      location: appointment.location as { lat: number; lng: number } | null
     }
   });
 
@@ -178,17 +178,15 @@ function RescheduleDialog({
                             date.setSeconds(0);
                             date.setMilliseconds(0);
 
-                            // Handle timezone offset
-                            const userTimezoneOffset = date.getTimezoneOffset() * 60000;
-                            const adjustedDate = new Date(date.getTime() - userTimezoneOffset);
-
-                            field.onChange(adjustedDate.toISOString());
+                            // Create a UTC date that preserves the local time selected
+                            const localDate = new Date(date);
+                            field.onChange(localDate.toISOString());
                           }
                         }
                       }}
                       value={
                         field.value
-                          ? new Date(field.value).toISOString().slice(0, 16)
+                          ? new Date(field.value).toLocaleString('sv-SE').slice(0, 16)
                           : ""
                       }
                     />
@@ -224,7 +222,7 @@ function NewAppointmentDialog({ customers }: { customers: Customer[] }) {
       serviceType: undefined,
       status: 'pending',
       notes: '',
-      location: { lat: 0, lng: 0 }  
+      location: { lat: 0, lng: 0}
     }
   });
 
@@ -316,7 +314,7 @@ function NewAppointmentDialog({ customers }: { customers: Customer[] }) {
                   <FormControl>
                     <Input
                       type="datetime-local"
-                      step="900" 
+                      step="900"
                       {...field}
                       value={
                         field.value
