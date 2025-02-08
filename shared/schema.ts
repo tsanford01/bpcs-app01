@@ -1,6 +1,7 @@
-import { pgTable, text, serial, integer, boolean, timestamp, json } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, json, date } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+import { sql } from "drizzle-orm";
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -17,6 +18,15 @@ export const customers = pgTable("customers", {
   phone: text("phone").notNull(),
   address: text("address").notNull(),
   notes: text("notes"),
+  birthday: date("birthday"),
+  customerSince: date("customer_since").notNull().default(sql`CURRENT_DATE`),
+  tags: text("tags").array(),
+  paymentMethods: json("payment_methods").array(),
+  preferences: json("preferences"),
+  status: text("status").notNull().default("active"),
+  lastContact: timestamp("last_contact"),
+  totalSpent: integer("total_spent").notNull().default(0),
+  serviceCount: integer("service_count").notNull().default(0),
 });
 
 export const appointments = pgTable("appointments", {
@@ -46,7 +56,6 @@ export const messages = pgTable("messages", {
   timestamp: timestamp("timestamp").notNull(),
 });
 
-// Modified schema to handle string dates
 export const insertAppointmentSchema = createInsertSchema(appointments, {
   date: z.string().transform((str) => new Date(str)),
   location: z.object({
@@ -62,12 +71,24 @@ export const insertUserSchema = createInsertSchema(users).pick({
 });
 
 export const insertCustomerSchema = createInsertSchema(customers, {
-  // Add custom validation
   name: z.string().min(1, "Name is required"),
   email: z.string().email("Invalid email address"),
   phone: z.string().min(10, "Phone number must be at least 10 digits"),
   address: z.string().min(1, "Address is required"),
   notes: z.string().nullable(),
+  birthday: z.string().nullable().transform(str => str ? new Date(str) : null),
+  tags: z.array(z.string()).default([]),
+  paymentMethods: z.array(z.object({
+    id: z.string(),
+    type: z.string(),
+    last4: z.string(),
+    expiryDate: z.string().optional(),
+  })).default([]),
+  preferences: z.object({
+    preferredContactMethod: z.enum(["email", "phone", "sms"]),
+    servicePreferences: z.array(z.string()),
+    communicationFrequency: z.enum(["weekly", "monthly", "quarterly"]),
+  }).nullable(),
 });
 export const insertReviewSchema = createInsertSchema(reviews);
 export const insertMessageSchema = createInsertSchema(messages);
