@@ -38,6 +38,8 @@ import {
   insertAppointmentSchema,
   InsertAppointment,
 } from "@shared/schema";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 
 // Utility function to format date for input
 function formatDateForInput(date: Date): string {
@@ -221,15 +223,52 @@ function RescheduleDialog({
   );
 }
 
+// Generate time slots for the day in 15-minute intervals
+function generateTimeSlots(): string[] {
+  const slots: string[] = [];
+  for (let hour = 0; hour < 24; hour++) {
+    for (let minute = 0; minute < 60; minute += 15) {
+      const formattedHour = hour % 12 || 12;
+      const period = hour < 12 ? 'AM' : 'PM';
+      const formattedMinute = minute.toString().padStart(2, '0');
+      slots.push(`${formattedHour}:${formattedMinute} ${period}`);
+    }
+  }
+  return slots;
+}
+
+// Convert time string (e.g., "9:15 AM") to Date object
+function timeStringToDate(dateObj: Date, timeStr: string): Date {
+  const [time, period] = timeStr.split(' ');
+  const [hours, minutes] = time.split(':').map(Number);
+  const newDate = new Date(dateObj);
+
+  let adjustedHours = hours;
+  if (period === 'PM' && hours !== 12) {
+    adjustedHours += 12;
+  } else if (period === 'AM' && hours === 12) {
+    adjustedHours = 0;
+  }
+
+  newDate.setHours(adjustedHours, minutes, 0, 0);
+  return newDate;
+}
+
+// Format date for display
+function formatDateTime(date: Date): string {
+  return format(date, "MMMM d, yyyy 'at' h:mm a");
+}
+
 function NewAppointmentDialog({ customers }: { customers: Customer[] }) {
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
+  const timeSlots = generateTimeSlots();
 
   const form = useForm<InsertAppointment>({
     resolver: zodResolver(insertAppointmentSchema),
     defaultValues: {
       customerId: undefined,
-      date: new Date(),  // Change from string to Date
+      date: new Date(),
       serviceType: undefined,
       status: 'pending',
       notes: '',
@@ -316,31 +355,92 @@ function NewAppointmentDialog({ customers }: { customers: Customer[] }) {
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="date"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Date & Time</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="datetime-local"
-                      step={900} // 15 minutes in seconds
-                      {...field}
-                      onChange={(e) => {
-                        const inputDate = e.target.value;
-                        if (inputDate) {
-                          const date = parseInputDate(inputDate);
-                          field.onChange(date); // Changed this line
-                        }
+            <div className="grid gap-4">
+              <FormField
+                control={form.control}
+                name="date"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Date</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant={"outline"}
+                            className={cn(
+                              "pl-3 text-left font-normal",
+                              !field.value && "text-muted-foreground"
+                            )}
+                          >
+                            {field.value ? (
+                              format(field.value, "PPP")
+                            ) : (
+                              <span>Pick a date</span>
+                            )}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={field.value}
+                          onSelect={(date) => {
+                            if (date) {
+                              // Preserve the current time when changing date
+                              const currentTime = field.value || new Date();
+                              date.setHours(
+                                currentTime.getHours(),
+                                currentTime.getMinutes(),
+                                0,
+                                0
+                              );
+                              field.onChange(date);
+                            }
+                          }}
+                          disabled={(date) =>
+                            date < new Date(new Date().setHours(0, 0, 0, 0))
+                          }
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="date"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Time</FormLabel>
+                    <Select
+                      onValueChange={(timeStr) => {
+                        const newDate = timeStringToDate(field.value, timeStr);
+                        field.onChange(newDate);
                       }}
-                      value={field.value ? formatDateForInput(new Date(field.value)) : ""}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                      value={format(field.value, "h:mm a")}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select time" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {timeSlots.map((timeSlot) => (
+                          <SelectItem key={timeSlot} value={timeSlot}>
+                            {timeSlot}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             <FormField
               control={form.control}
