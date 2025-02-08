@@ -11,5 +11,18 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+// Add error handling and connection logging
+const pool = new Pool({ 
+  connectionString: process.env.DATABASE_URL,
+  connectionTimeoutMillis: 5000,
+});
+
+// Test the connection
+pool.connect()
+  .then(() => console.log('Database connected successfully'))
+  .catch(err => {
+    console.error('Database connection error:', err);
+    process.exit(1);
+  });
+
 export const db = drizzle({ client: pool, schema });

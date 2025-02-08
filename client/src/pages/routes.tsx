@@ -12,13 +12,6 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
 import { Calendar as CalendarIcon, MapPin } from "lucide-react";
@@ -26,10 +19,16 @@ import { Appointment, Customer } from "@shared/schema";
 
 // Fix Leaflet marker icon issues
 delete (L.Icon.Default.prototype as any)._getIconUrl;
+
+// Import marker icons directly
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl: require('leaflet/dist/images/marker-icon-2x.png'),
-  iconUrl: require('leaflet/dist/images/marker-icon.png'),
-  shadowUrl: require('leaflet/dist/images/marker-shadow.png'),
+  iconUrl: markerIcon,
+  iconRetinaUrl: markerIcon2x,
+  shadowUrl: markerShadow,
 });
 
 export default function Routes() {
@@ -113,9 +112,10 @@ export default function Routes() {
           <CardContent>
             <div className="h-[600px] rounded-lg overflow-hidden">
               <MapContainer
-                center={[40.7128, -74.0060]} // Default to NYC
+                center={[40.7128, -74.0060] as L.LatLngExpression}
                 zoom={11}
                 style={{ height: "100%", width: "100%" }}
+                scrollWheelZoom={false}
               >
                 <TileLayer
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -127,7 +127,10 @@ export default function Routes() {
                   const location = apt.location as { lat: number; lng: number };
 
                   return (
-                    <Marker key={apt.id} position={[location.lat, location.lng]}>
+                    <Marker 
+                      key={apt.id} 
+                      position={[location.lat, location.lng] as L.LatLngExpression}
+                    >
                       <Popup>
                         <div>
                           <p className="font-medium">{customer?.name}</p>

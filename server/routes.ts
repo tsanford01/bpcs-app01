@@ -7,7 +7,7 @@ import { insertCustomerSchema, insertAppointmentSchema, insertReviewSchema, inse
 
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
-  
+
   const httpServer = createServer(app);
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
 

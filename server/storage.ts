@@ -1,4 +1,4 @@
-import { IStorage } from "./storage";
+import { IStorage } from "./types";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { db } from "./db";
@@ -8,16 +8,22 @@ import {
   type User, type Customer, type Appointment, type Review, type Message,
   type InsertUser, type InsertCustomer, type InsertAppointment, type InsertReview, type InsertMessage
 } from "@shared/schema";
-import { pool } from "./db";
+import { Pool } from "@neondatabase/serverless";
 
 const PostgresSessionStore = connectPg(session);
+
+// Create a new pool for sessions
+const sessionPool = new Pool({ 
+  connectionString: process.env.DATABASE_URL,
+  connectionTimeoutMillis: 5000,
+});
 
 export class DatabaseStorage implements IStorage {
   sessionStore: session.Store;
 
   constructor() {
     this.sessionStore = new PostgresSessionStore({
-      pool,
+      pool: sessionPool,
       createTableIfMissing: true,
     });
   }
