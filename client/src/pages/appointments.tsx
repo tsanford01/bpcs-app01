@@ -178,7 +178,8 @@ function NewAppointmentDialog({
       serviceType: undefined,
       status: 'pending',
       notes: '',
-      location: null
+      // Set a default location for Utah County
+      location: { lat: 40.3484, lng: -111.7786 }
     }
   });
 
@@ -191,6 +192,13 @@ function NewAppointmentDialog({
 
   const createAppointment = useMutation({
     mutationFn: async (data: InsertAppointment) => {
+      const customer = customers.find(c => c.id === data.customerId);
+
+      // If customer has a location, use it, otherwise use the default
+      if (customer?.location) {
+        data.location = customer.location;
+      }
+
       const res = await apiRequest("POST", "/api/appointments", data);
       if (!res.ok) {
         const error = await res.json();
