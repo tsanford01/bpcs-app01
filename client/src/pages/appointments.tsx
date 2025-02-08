@@ -39,6 +39,7 @@ import {
 } from "@shared/schema";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 // Constants for time slots
 const BUSINESS_HOURS_START = 8; // 8 AM
@@ -545,6 +546,7 @@ function RescheduleDialog({
 function AppointmentStatusButton({ appointment }: { appointment: Appointment }) {
   const { toast } = useToast();
   const [isRescheduling, setIsRescheduling] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(new Date(appointment.date)); // Added state for selected date
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<TimeSlot>();
 
   const updateStatus = useMutation({
@@ -605,21 +607,44 @@ function AppointmentStatusButton({ appointment }: { appointment: Appointment }) 
   if (isRescheduling) {
     return (
       <Dialog open={isRescheduling} onOpenChange={(open) => !open && setIsRescheduling(false)}>
-        <DialogContent>
+        <DialogContent className="max-w-4xl">
           <DialogHeader>
             <DialogTitle>Reschedule Appointment</DialogTitle>
             <DialogDescription>
-              Select a new time slot for this appointment
+              Select a new date and time for this appointment
             </DialogDescription>
           </DialogHeader>
 
-          <TimeGrid
-            selectedDate={new Date(appointment.date)}
-            appointments={[]}  // Pass empty array to show all slots as available
-            customers={[]}
-            onSelectSlot={(slot) => handleReschedule(slot.start)}
-            isRescheduling
-          />
+          <div className="grid gap-6 md:grid-cols-[300px_1fr]">
+            <div className="space-y-4">
+              <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={(date) => date && setSelectedDate(date)}
+                className="rounded-md border"
+                disabled={(date) =>
+                  date < startOfDay(new Date())
+                }
+              />
+
+              <div className="rounded-lg border p-3">
+                <h3 className="font-medium mb-2">Current Appointment</h3>
+                <p className="text-sm text-muted-foreground">
+                  {format(new Date(appointment.date), "PPP 'at' h:mm a")}
+                </p>
+              </div>
+            </div>
+
+            <ScrollArea className="h-[500px]">
+              <TimeGrid
+                selectedDate={selectedDate}
+                appointments={[]} // Pass empty array to show all slots as available
+                customers={[]}
+                onSelectSlot={(slot) => handleReschedule(slot.start)}
+                isRescheduling
+              />
+            </ScrollArea>
+          </div>
         </DialogContent>
       </Dialog>
     );
@@ -643,6 +668,7 @@ function AppointmentStatusButton({ appointment }: { appointment: Appointment }) 
     </Select>
   );
 }
+
 
 export default function Appointments() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
