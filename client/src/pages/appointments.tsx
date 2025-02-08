@@ -1,5 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Calendar as CalendarIcon, Plus, ChevronLeft, ChevronRight } from "lucide-react";
 import { format, addDays, startOfDay, addMinutes, isSameDay, isWithinInterval } from "date-fns";
 import {
@@ -52,12 +52,12 @@ interface TimeSlot {
   appointment?: Appointment;
 }
 
-function TimeGrid({ 
-  selectedDate, 
-  appointments, 
+function TimeGrid({
+  selectedDate,
+  appointments,
   onSelectSlot,
-  customers 
-}: { 
+  customers
+}: {
   selectedDate: Date;
   appointments: Appointment[];
   onSelectSlot: (slot: TimeSlot) => void;
@@ -118,7 +118,7 @@ function TimeGrid({
             </div>
             <div className="grid grid-cols-4 gap-2">
               {slots.map((slot, index) => {
-                const customer = slot.appointment 
+                const customer = slot.appointment
                   ? customers.find(c => c.id === slot.appointment?.customerId)
                   : undefined;
 
@@ -128,7 +128,7 @@ function TimeGrid({
                     onClick={() => slot.isAvailable && onSelectSlot(slot)}
                     className={cn(
                       "h-12 rounded-md border p-1 cursor-pointer transition-colors relative group",
-                      slot.isAvailable 
+                      slot.isAvailable
                         ? "hover:bg-accent hover:text-accent-foreground"
                         : "bg-primary/10 cursor-not-allowed"
                     )}
@@ -159,11 +159,11 @@ function TimeGrid({
   );
 }
 
-function NewAppointmentDialog({ 
+function NewAppointmentDialog({
   customers,
   selectedTimeSlot,
-  onClose 
-}: { 
+  onClose
+}: {
   customers: Customer[];
   selectedTimeSlot?: TimeSlot;
   onClose: () => void;
@@ -181,6 +181,13 @@ function NewAppointmentDialog({
       location: null
     }
   });
+
+  // Use the provided selectedTimeSlot
+  useEffect(() => {
+    if (selectedTimeSlot) {
+      form.setValue('date', selectedTimeSlot.start.toISOString());
+    }
+  }, [selectedTimeSlot, form]);
 
   const createAppointment = useMutation({
     mutationFn: async (data: InsertAppointment) => {
@@ -259,13 +266,17 @@ function NewAppointmentDialog({
             name="date"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Date & Time</FormLabel>
+                <FormLabel>Selected Time Slot</FormLabel>
                 <FormControl>
-                  <Input
-                    type="text"
-                    readOnly
-                    value={format(new Date(field.value), "PPP 'at' h:mm a")}
-                  />
+                  <div className="p-3 rounded-md bg-muted">
+                    <p className="text-sm">
+                      {selectedTimeSlot ? (
+                        format(selectedTimeSlot.start, "PPP 'at' h:mm a")
+                      ) : (
+                        "No time slot selected"
+                      )}
+                    </p>
+                  </div>
                 </FormControl>
                 <FormMessage />
               </FormItem>
