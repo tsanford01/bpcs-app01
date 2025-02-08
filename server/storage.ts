@@ -15,10 +15,12 @@ const PostgresSessionStore = connectPg(session);
 // Create a new pool specifically for sessions with optimized settings
 const sessionPool = new Pool({ 
   connectionString: process.env.DATABASE_URL,
-  max: 10, // Limit concurrent connections for session store
+  max: 3, // Limit concurrent connections for session store
   idleTimeoutMillis: 1000 * 60 * 5, // 5 minutes
-  connectionTimeoutMillis: 10000, // 10 seconds
-  maxUses: 5000 // Limit reuse of connections
+  connectionTimeoutMillis: 3000, // 3 seconds
+  maxUses: 2500, // Limit reuse of connections
+  maxLifetimeSeconds: 3600, // Maximum lifetime of 1 hour
+  allowExitOnIdle: true
 });
 
 // Test session pool connection
@@ -29,14 +31,33 @@ sessionPool.connect()
     process.exit(1);
   });
 
-// Add error handling for session pool
+// Add error handling for session pool with exponential backoff
+let sessionReconnectAttempts = 0;
+const MAX_SESSION_RECONNECT_ATTEMPTS = 5;
+const INITIAL_SESSION_RECONNECT_DELAY = 1000;
+
 sessionPool.on('error', (err) => {
   console.error('Session pool error:', err);
   if (err.message.includes('connection') || err.message.includes('terminated')) {
-    console.log('Attempting to reconnect session pool...');
-    sessionPool.connect()
-      .then(() => console.log('Session pool reconnected successfully'))
-      .catch(console.error);
+    if (sessionReconnectAttempts < MAX_SESSION_RECONNECT_ATTEMPTS) {
+      const delay = INITIAL_SESSION_RECONNECT_DELAY * Math.pow(2, sessionReconnectAttempts);
+      console.log(`Attempting to reconnect session pool (attempt ${sessionReconnectAttempts + 1})...`);
+      setTimeout(() => {
+        sessionPool.connect()
+          .then(() => {
+            console.log('Session pool reconnected successfully');
+            sessionReconnectAttempts = 0;
+          })
+          .catch(err => {
+            console.error('Session pool reconnection failed:', err);
+            sessionReconnectAttempts++;
+            if (sessionReconnectAttempts >= MAX_SESSION_RECONNECT_ATTEMPTS) {
+              console.error('Maximum session reconnection attempts reached');
+              process.exit(1);
+            }
+          });
+      }, delay);
+    }
   }
 });
 
@@ -224,5 +245,17 @@ export class DatabaseStorage implements IStorage {
     }
   }
 }
+
+// Monitor session pool health
+setInterval(() => {
+  const poolStatus = sessionPool.totalCount + "/" + sessionPool.idleCount + "/" + sessionPool.waitingCount;
+  console.log(`Session pool status (total/idle/waiting): ${poolStatus}`);
+}, 30000);
+
+// Cleanup session pool on process exit
+process.on('exit', () => {
+  sessionPool.end()
+    .catch(err => console.error('Error closing session pool:', err));
+});
 
 export const storage = new DatabaseStorage();
