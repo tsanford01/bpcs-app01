@@ -63,6 +63,22 @@ function TimeGrid({
   onSelectSlot: (slot: TimeSlot) => void;
   customers: Customer[];
 }) {
+  const [hoveredSlot, setHoveredSlot] = useState<TimeSlot | null>(null);
+
+  // Calculate if a slot would overlap with existing appointments
+  const wouldOverlap = (slot: TimeSlot) => {
+    if (!slot) return false;
+    return appointments.some(apt => {
+      const aptStart = new Date(apt.date);
+      const aptEnd = addMinutes(aptStart, TIME_SLOT_DURATION);
+      return (
+        isSameDay(aptStart, selectedDate) &&
+        (isWithinInterval(slot.start, { start: aptStart, end: aptEnd }) ||
+          isWithinInterval(slot.end, { start: aptStart, end: aptEnd }))
+      );
+    });
+  };
+
   const timeSlots = useMemo(() => {
     const slots: { [hour: number]: TimeSlot[] } = {};
 
@@ -122,14 +138,26 @@ function TimeGrid({
                   ? customers.find(c => c.id === slot.appointment?.customerId)
                   : undefined;
 
+                const isHovered = hoveredSlot &&
+                  slot.start >= hoveredSlot.start &&
+                  slot.start < addMinutes(hoveredSlot.start, TIME_SLOT_DURATION);
+
+                const hasOverlap = isHovered && wouldOverlap(hoveredSlot);
+
                 return (
                   <div
                     key={index}
-                    onClick={() => slot.isAvailable && onSelectSlot(slot)}
+                    onClick={() => slot.isAvailable && !hasOverlap && onSelectSlot(slot)}
+                    onMouseEnter={() => slot.isAvailable && setHoveredSlot(slot)}
+                    onMouseLeave={() => setHoveredSlot(null)}
                     className={cn(
                       "h-12 rounded-md border p-1 cursor-pointer transition-colors relative group",
                       slot.isAvailable
-                        ? "hover:bg-accent hover:text-accent-foreground"
+                        ? isHovered
+                          ? hasOverlap
+                            ? "bg-red-100 border-red-200"
+                            : "bg-green-100 border-green-200"
+                          : "hover:bg-accent hover:text-accent-foreground"
                         : "bg-primary/10 cursor-not-allowed"
                     )}
                   >
@@ -143,7 +171,7 @@ function TimeGrid({
                         </p>
                       </div>
                     )}
-                    {slot.isAvailable && (
+                    {slot.isAvailable && !hasOverlap && (
                       <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-accent/50 rounded-md">
                         <Plus className="h-4 w-4" />
                       </div>
@@ -489,7 +517,6 @@ function RescheduleDialog({
 }
 
 
-
 function AppointmentStatusButton({ appointment }: { appointment: Appointment }) {
   const { toast } = useToast();
 
@@ -547,6 +574,15 @@ export default function Appointments() {
     queryKey: ["/api/customers"],
   });
 
+  // Filter appointments for the selected date
+  const selectedDateAppointments = useMemo(() => {
+    return appointments.filter(apt =>
+      isSameDay(new Date(apt.date), selectedDate)
+    ).sort((a, b) =>
+      new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
+  }, [appointments, selectedDate]);
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -554,7 +590,6 @@ export default function Appointments() {
           <h1 className="text-3xl font-bold tracking-tight">Appointments</h1>
           <p className="text-muted-foreground">Manage your service schedule</p>
         </div>
-        {/*<NewAppointmentDialog customers={customers} />*/}
       </div>
 
       <div className="grid gap-6 md:grid-cols-[300px_1fr]">
@@ -574,6 +609,34 @@ export default function Appointments() {
             <p className="text-sm text-muted-foreground">
               {format(selectedDate, "PPPP")}
             </p>
+          </div>
+
+          {/* Add list of appointments for selected date */}
+          <div className="rounded-lg border p-3">
+            <h3 className="font-medium mb-2">Scheduled Appointments</h3>
+            <div className="space-y-2">
+              {selectedDateAppointments.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No appointments scheduled for this date
+                </p>
+              ) : (
+                selectedDateAppointments.map(apt => {
+                  const customer = customers.find(c => c.id === apt.customerId);
+                  return (
+                    <div key={apt.id} className="text-sm border-b pb-2 last:border-0 last:pb-0">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="font-medium">{format(new Date(apt.date), "h:mm a")}</p>
+                          <p>{customer?.name}</p>
+                          <p className="text-muted-foreground">{apt.serviceType}</p>
+                        </div>
+                        <AppointmentStatusButton appointment={apt} />
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
           </div>
         </div>
 
