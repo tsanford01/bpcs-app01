@@ -57,12 +57,14 @@ function TimeGrid({
   selectedDate,
   appointments,
   onSelectSlot,
-  customers
+  customers,
+  isRescheduling,
 }: {
   selectedDate: Date;
   appointments: Appointment[];
   onSelectSlot: (slot: TimeSlot) => void;
   customers: Customer[];
+  isRescheduling?: boolean;
 }) {
   const [hoveredSlot, setHoveredSlot] = useState<TimeSlot | null>(null);
 
@@ -180,7 +182,8 @@ function TimeGrid({
                             ? "bg-red-200 border-red-300"
                             : "bg-green-200 border-green-300"
                           : "hover:bg-accent hover:text-accent-foreground"
-                        : "bg-primary/20 cursor-not-allowed"
+                        : "bg-primary/20 cursor-not-allowed",
+                      isRescheduling && "hover:bg-blue-100 hover:border-blue-200"
                     )}
                   >
                     {slot.appointment && slot.appointment.status !== 'cancelled' && (
@@ -541,20 +544,29 @@ function RescheduleDialog({
 
 function AppointmentStatusButton({ appointment }: { appointment: Appointment }) {
   const { toast } = useToast();
+  const [isRescheduling, setIsRescheduling] = useState(false);
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState<TimeSlot>();
 
   const updateStatus = useMutation({
     mutationFn: async (status: string) => {
+      if (status === 'reschedule') {
+        setIsRescheduling(true);
+        return appointment;
+      }
+
       const res = await apiRequest("PATCH", `/api/appointments/${appointment.id}`, {
         status,
       });
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
-      toast({
-        title: "Status updated",
-        description: "The appointment status has been updated",
-      });
+      if (!isRescheduling) {
+        queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
+        toast({
+          title: "Status updated",
+          description: "The appointment status has been updated",
+        });
+      }
     },
     onError: (error) => {
       toast({
@@ -564,6 +576,54 @@ function AppointmentStatusButton({ appointment }: { appointment: Appointment }) 
       });
     },
   });
+
+  const handleReschedule = async (newDate: Date) => {
+    try {
+      const res = await apiRequest("PATCH", `/api/appointments/${appointment.id}`, {
+        date: newDate.toISOString(),
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to reschedule appointment');
+      }
+
+      setIsRescheduling(false);
+      queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
+      toast({
+        title: "Appointment rescheduled",
+        description: "The appointment has been rescheduled successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  if (isRescheduling) {
+    return (
+      <Dialog open={isRescheduling} onOpenChange={(open) => !open && setIsRescheduling(false)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reschedule Appointment</DialogTitle>
+            <DialogDescription>
+              Select a new time slot for this appointment
+            </DialogDescription>
+          </DialogHeader>
+
+          <TimeGrid
+            selectedDate={new Date(appointment.date)}
+            appointments={[]}  // Pass empty array to show all slots as available
+            customers={[]}
+            onSelectSlot={(slot) => handleReschedule(slot.start)}
+            isRescheduling
+          />
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Select
@@ -578,6 +638,7 @@ function AppointmentStatusButton({ appointment }: { appointment: Appointment }) 
         <SelectItem value="confirmed">Confirmed</SelectItem>
         <SelectItem value="completed">Completed</SelectItem>
         <SelectItem value="cancelled">Cancelled</SelectItem>
+        <SelectItem value="reschedule">Reschedule</SelectItem>
       </SelectContent>
     </Select>
   );
@@ -686,7 +747,7 @@ export default function Appointments() {
 
           <TimeGrid
             selectedDate={selectedDate}
-            appointments={appointments}
+            appointments={selectedDateAppointments}
             customers={customers}
             onSelectSlot={(slot) => {
               setSelectedTimeSlot(slot);
