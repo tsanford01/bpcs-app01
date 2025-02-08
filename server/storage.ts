@@ -1,132 +1,121 @@
 import { IStorage } from "./storage";
+import session from "express-session";
+import connectPg from "connect-pg-simple";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
 import {
   users, customers, appointments, reviews, messages,
   type User, type Customer, type Appointment, type Review, type Message,
   type InsertUser, type InsertCustomer, type InsertAppointment, type InsertReview, type InsertMessage
 } from "@shared/schema";
-import createMemoryStore from "memorystore";
-import session from "express-session";
+import { pool } from "./db";
 
-const MemoryStore = createMemoryStore(session);
+const PostgresSessionStore = connectPg(session);
 
-export class MemStorage implements IStorage {
-  private users: Map<number, User>;
-  private customers: Map<number, Customer>;
-  private appointments: Map<number, Appointment>;
-  private reviews: Map<number, Review>;
-  private messages: Map<number, Message>;
-  sessionStore: session.SessionStore;
-  private currentIds: { [key: string]: number };
+export class DatabaseStorage implements IStorage {
+  sessionStore: session.Store;
 
   constructor() {
-    this.users = new Map();
-    this.customers = new Map();
-    this.appointments = new Map();
-    this.reviews = new Map();
-    this.messages = new Map();
-    this.currentIds = {
-      users: 1,
-      customers: 1,
-      appointments: 1,
-      reviews: 1,
-      messages: 1
-    };
-    this.sessionStore = new MemoryStore({
-      checkPeriod: 86400000,
+    this.sessionStore = new PostgresSessionStore({
+      pool,
+      createTableIfMissing: true,
     });
   }
 
   // User methods
   async getUser(id: number): Promise<User | undefined> {
-    return this.users.get(id);
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username
-    );
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user;
   }
 
   async createUser(user: InsertUser): Promise<User> {
-    const id = this.currentIds.users++;
-    const newUser = { ...user, id, role: "admin" };
-    this.users.set(id, newUser);
+    const [newUser] = await db.insert(users).values(user).returning();
     return newUser;
   }
 
   // Customer methods
   async getCustomer(id: number): Promise<Customer | undefined> {
-    return this.customers.get(id);
+    const [customer] = await db.select().from(customers).where(eq(customers.id, id));
+    return customer;
   }
 
   async listCustomers(): Promise<Customer[]> {
-    return Array.from(this.customers.values());
+    return await db.select().from(customers);
   }
 
   async createCustomer(customer: InsertCustomer): Promise<Customer> {
-    const id = this.currentIds.customers++;
-    const newCustomer = { ...customer, id };
-    this.customers.set(id, newCustomer);
+    const [newCustomer] = await db.insert(customers).values(customer).returning();
     return newCustomer;
   }
 
   // Appointment methods
   async getAppointment(id: number): Promise<Appointment | undefined> {
-    return this.appointments.get(id);
+    const [appointment] = await db.select().from(appointments).where(eq(appointments.id, id));
+    return appointment;
   }
 
   async listAppointments(): Promise<Appointment[]> {
-    return Array.from(this.appointments.values());
+    return await db.select().from(appointments);
   }
 
   async createAppointment(appointment: InsertAppointment): Promise<Appointment> {
-    const id = this.currentIds.appointments++;
-    const newAppointment = { ...appointment, id };
-    this.appointments.set(id, newAppointment);
+    const [newAppointment] = await db.insert(appointments).values(appointment).returning();
     return newAppointment;
   }
 
   async updateAppointment(id: number, appointment: Partial<Appointment>): Promise<Appointment> {
-    const existing = await this.getAppointment(id);
-    if (!existing) throw new Error("Appointment not found");
-    const updated = { ...existing, ...appointment };
-    this.appointments.set(id, updated);
+    const [updated] = await db
+      .update(appointments)
+      .set(appointment)
+      .where(eq(appointments.id, id))
+      .returning();
+    if (!updated) throw new Error("Appointment not found");
     return updated;
   }
 
   // Review methods
+  async getReview(id: number): Promise<Review | undefined> {
+    const [review] = await db.select().from(reviews).where(eq(reviews.id, id));
+    return review;
+  }
+
   async listReviews(): Promise<Review[]> {
-    return Array.from(this.reviews.values());
+    return await db.select().from(reviews);
   }
 
   async createReview(review: InsertReview): Promise<Review> {
-    const id = this.currentIds.reviews++;
-    const newReview = { ...review, id };
-    this.reviews.set(id, newReview);
+    const [newReview] = await db.insert(reviews).values(review).returning();
     return newReview;
   }
 
   async updateReview(id: number, review: Partial<Review>): Promise<Review> {
-    const existing = await this.getReview(id);
-    if (!existing) throw new Error("Review not found");
-    const updated = { ...existing, ...review };
-    this.reviews.set(id, updated);
+    const [updated] = await db
+      .update(reviews)
+      .set(review)
+      .where(eq(reviews.id, id))
+      .returning();
+    if (!updated) throw new Error("Review not found");
     return updated;
   }
 
   // Message methods
   async listMessages(customerId: number): Promise<Message[]> {
-    return Array.from(this.messages.values())
-      .filter(msg => msg.customerId === customerId)
-      .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+    return await db
+      .select()
+      .from(messages)
+      .where(eq(messages.customerId, customerId))
+      .orderBy(messages.timestamp);
   }
 
   async createMessage(message: InsertMessage): Promise<Message> {
-    const id = this.currentIds.messages++;
-    const newMessage = { ...message, id };
-    this.messages.set(id, newMessage);
+    const [newMessage] = await db.insert(messages).values(message).returning();
     return newMessage;
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
