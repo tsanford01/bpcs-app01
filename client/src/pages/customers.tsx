@@ -112,7 +112,14 @@ function NewCustomerDialog() {
 
   const createCustomer = useMutation({
     mutationFn: async (data: InsertCustomer) => {
-      const res = await apiRequest("POST", "/api/customers", data);
+      const res = await apiRequest("POST", "/api/customers", {
+        ...data,
+        notes: data.notes || null // Ensure notes is null when empty
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || 'Failed to create customer');
+      }
       return res.json();
     },
     onSuccess: () => {
@@ -125,6 +132,7 @@ function NewCustomerDialog() {
       });
     },
     onError: (error) => {
+      console.error('Customer creation error:', error);
       toast({
         title: "Error",
         description: error.message,
