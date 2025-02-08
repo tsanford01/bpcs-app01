@@ -11,47 +11,26 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-const MAX_RETRIES = 5;
-const RETRY_DELAY = 5000; // 5 seconds
-
-// Configure pool with better defaults
-const pool = new Pool({ 
+// Configure pool with optimized settings
+export const pool = new Pool({ 
   connectionString: process.env.DATABASE_URL,
-  connectionTimeoutMillis: 10000, // 10 seconds
-  max: 20, // maximum number of clients
-  idleTimeoutMillis: 30000, // 30 seconds
-  maxUses: 7500, // number of times a client can be reused
+  max: 20, // Maximum number of clients in pool
+  idleTimeoutMillis: 30000, // How long a client is allowed to remain idle before being closed
+  connectionTimeoutMillis: 10000, // How long to wait for a connection
+  maxUses: 7500 // Number of times a client can be reused before being replaced
 });
 
-// Implement connection retry logic
-async function connectWithRetry(retries = MAX_RETRIES) {
-  try {
-    await pool.connect();
-    console.log('Database connected successfully');
-    return true;
-  } catch (err) {
-    console.error('Database connection error:', err);
-    if (retries > 0) {
-      console.log(`Retrying connection in ${RETRY_DELAY}ms... (${retries} attempts remaining)`);
-      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
-      return connectWithRetry(retries - 1);
-    }
-    throw err;
-  }
-}
+export const db = drizzle({ client: pool, schema });
 
-// Initialize connection
-connectWithRetry().catch(err => {
-  console.error('Failed to connect to database after all retries:', err);
-  process.exit(1);
-});
-
-// Add error handling for the pool
+// Enhanced error handling for the pool
 pool.on('error', (err) => {
   console.error('Unexpected database error:', err);
-  // Attempt to reconnect if the error is connection-related
+  // Only attempt reconnection for specific error types
   if (err.message.includes('connection') || err.message.includes('terminated')) {
-    connectWithRetry().catch(console.error);
+    console.log("Attempting to reconnect to database...");
+    pool.connect()
+      .then(() => console.log("Database reconnected successfully"))
+      .catch(console.error);
   }
 });
 
@@ -66,10 +45,4 @@ process.on('SIGTERM', async () => {
   console.log('Closing database pool...');
   await pool.end();
   process.exit(0);
-});
-
-export const db = drizzle({ 
-  client: pool,
-  schema,
-  logger: true 
 });

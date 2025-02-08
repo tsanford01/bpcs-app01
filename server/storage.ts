@@ -12,10 +12,13 @@ import { Pool } from "@neondatabase/serverless";
 
 const PostgresSessionStore = connectPg(session);
 
-// Create a new pool for sessions
+// Create a new pool specifically for sessions with optimized settings
 const sessionPool = new Pool({ 
   connectionString: process.env.DATABASE_URL,
-  connectionTimeoutMillis: 5000,
+  max: 10, // Limit concurrent connections for session store
+  idleTimeoutMillis: 1000 * 60 * 5, // 5 minutes
+  connectionTimeoutMillis: 10000, // 10 seconds
+  maxUses: 5000 // Limit reuse of connections
 });
 
 // Test session pool connection
@@ -26,6 +29,17 @@ sessionPool.connect()
     process.exit(1);
   });
 
+// Add error handling for session pool
+sessionPool.on('error', (err) => {
+  console.error('Session pool error:', err);
+  if (err.message.includes('connection') || err.message.includes('terminated')) {
+    console.log('Attempting to reconnect session pool...');
+    sessionPool.connect()
+      .then(() => console.log('Session pool reconnected successfully'))
+      .catch(console.error);
+  }
+});
+
 export class DatabaseStorage implements IStorage {
   sessionStore: session.Store;
 
@@ -33,10 +47,13 @@ export class DatabaseStorage implements IStorage {
     this.sessionStore = new PostgresSessionStore({
       pool: sessionPool,
       createTableIfMissing: true,
+      tableName: 'session',
+      pruneSessionInterval: 60 * 15, // Cleanup every 15 minutes
+      // Add session store error handling
+      errorLog: console.error,
     });
   }
 
-  // User methods with enhanced error handling
   async getUser(id: number): Promise<User | undefined> {
     try {
       const [user] = await db.select().from(users).where(eq(users.id, id));
@@ -67,7 +84,6 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  // Customer methods
   async getCustomer(id: number): Promise<Customer | undefined> {
     try {
       const [customer] = await db.select().from(customers).where(eq(customers.id, id));
@@ -97,7 +113,6 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  // Appointment methods
   async getAppointment(id: number): Promise<Appointment | undefined> {
     try {
       const [appointment] = await db.select().from(appointments).where(eq(appointments.id, id));
@@ -142,7 +157,6 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  // Review methods
   async getReview(id: number): Promise<Review | undefined> {
     try {
       const [review] = await db.select().from(reviews).where(eq(reviews.id, id));
@@ -187,7 +201,6 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  // Message methods
   async listMessages(customerId: number): Promise<Message[]> {
     try {
       return await db

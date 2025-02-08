@@ -29,14 +29,16 @@ async function comparePasswords(supplied: string, stored: string) {
 }
 
 export function setupAuth(app: Express) {
-  // Initialize session middleware first
+  // Initialize session middleware with improved settings
   const sessionSettings: session.SessionOptions = {
     secret: process.env.REPL_ID!,
     resave: false,
     saveUninitialized: false,
+    rolling: true, // Refresh session with each request
     cookie: {
       secure: app.get("env") === "production",
-      maxAge: 24 * 60 * 60 * 1000 // 24 hours
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      httpOnly: true,
     },
     store: storage.sessionStore,
   };
@@ -91,16 +93,16 @@ export function setupAuth(app: Express) {
       // Validate required fields
       const { username, password, name } = req.body;
       if (!username || !password || !name) {
-        return res.status(400).json({ 
-          message: "Username, password, and name are required" 
+        return res.status(400).json({
+          message: "Username, password, and name are required",
         });
       }
 
       // Check if username already exists
       const existingUser = await storage.getUserByUsername(username);
       if (existingUser) {
-        return res.status(400).json({ 
-          message: "Username already exists" 
+        return res.status(400).json({
+          message: "Username already exists",
         });
       }
 
@@ -121,8 +123,8 @@ export function setupAuth(app: Express) {
         });
       } catch (dbError) {
         console.error("Database error during registration:", dbError);
-        return res.status(500).json({ 
-          message: "Failed to create user account" 
+        return res.status(500).json({
+          message: "Failed to create user account",
         });
       }
     } catch (error) {
