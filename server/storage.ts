@@ -18,6 +18,14 @@ const sessionPool = new Pool({
   connectionTimeoutMillis: 5000,
 });
 
+// Test session pool connection
+sessionPool.connect()
+  .then(() => console.log('Session store connected successfully'))
+  .catch(err => {
+    console.error('Session store connection error:', err);
+    process.exit(1);
+  });
+
 export class DatabaseStorage implements IStorage {
   sessionStore: session.Store;
 
@@ -28,99 +36,179 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
-  // User methods
+  // User methods with enhanced error handling
   async getUser(id: number): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user;
+    try {
+      const [user] = await db.select().from(users).where(eq(users.id, id));
+      return user;
+    } catch (error) {
+      console.error('Error in getUser:', error);
+      throw new Error('Failed to fetch user');
+    }
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.username, username));
-    return user;
+    try {
+      const [user] = await db.select().from(users).where(eq(users.username, username));
+      return user;
+    } catch (error) {
+      console.error('Error in getUserByUsername:', error);
+      throw new Error('Failed to fetch user by username');
+    }
   }
 
   async createUser(user: InsertUser): Promise<User> {
-    const [newUser] = await db.insert(users).values(user).returning();
-    return newUser;
+    try {
+      const [newUser] = await db.insert(users).values(user).returning();
+      return newUser;
+    } catch (error) {
+      console.error('Error in createUser:', error);
+      throw new Error('Failed to create user');
+    }
   }
 
   // Customer methods
   async getCustomer(id: number): Promise<Customer | undefined> {
-    const [customer] = await db.select().from(customers).where(eq(customers.id, id));
-    return customer;
+    try {
+      const [customer] = await db.select().from(customers).where(eq(customers.id, id));
+      return customer;
+    } catch (error) {
+      console.error('Error in getCustomer:', error);
+      throw new Error('Failed to fetch customer');
+    }
   }
 
   async listCustomers(): Promise<Customer[]> {
-    return await db.select().from(customers);
+    try {
+      return await db.select().from(customers);
+    } catch (error) {
+      console.error('Error in listCustomers:', error);
+      throw new Error('Failed to list customers');
+    }
   }
 
   async createCustomer(customer: InsertCustomer): Promise<Customer> {
-    const [newCustomer] = await db.insert(customers).values(customer).returning();
-    return newCustomer;
+    try {
+      const [newCustomer] = await db.insert(customers).values(customer).returning();
+      return newCustomer;
+    } catch (error) {
+      console.error('Error in createCustomer:', error);
+      throw new Error('Failed to create customer');
+    }
   }
 
   // Appointment methods
   async getAppointment(id: number): Promise<Appointment | undefined> {
-    const [appointment] = await db.select().from(appointments).where(eq(appointments.id, id));
-    return appointment;
+    try {
+      const [appointment] = await db.select().from(appointments).where(eq(appointments.id, id));
+      return appointment;
+    } catch (error) {
+      console.error('Error in getAppointment:', error);
+      throw new Error('Failed to fetch appointment');
+    }
   }
 
   async listAppointments(): Promise<Appointment[]> {
-    return await db.select().from(appointments);
+    try {
+      return await db.select().from(appointments);
+    } catch (error) {
+      console.error('Error in listAppointments:', error);
+      throw new Error('Failed to list appointments');
+    }
   }
 
   async createAppointment(appointment: InsertAppointment): Promise<Appointment> {
-    const [newAppointment] = await db.insert(appointments).values(appointment).returning();
-    return newAppointment;
+    try {
+      const [newAppointment] = await db.insert(appointments).values(appointment).returning();
+      return newAppointment;
+    } catch (error) {
+      console.error('Error in createAppointment:', error);
+      throw new Error('Failed to create appointment');
+    }
   }
 
   async updateAppointment(id: number, appointment: Partial<Appointment>): Promise<Appointment> {
-    const [updated] = await db
-      .update(appointments)
-      .set(appointment)
-      .where(eq(appointments.id, id))
-      .returning();
-    if (!updated) throw new Error("Appointment not found");
-    return updated;
+    try {
+      const [updated] = await db
+        .update(appointments)
+        .set(appointment)
+        .where(eq(appointments.id, id))
+        .returning();
+      if (!updated) throw new Error("Appointment not found");
+      return updated;
+    } catch (error) {
+      console.error('Error in updateAppointment:', error);
+      throw new Error('Failed to update appointment');
+    }
   }
 
   // Review methods
   async getReview(id: number): Promise<Review | undefined> {
-    const [review] = await db.select().from(reviews).where(eq(reviews.id, id));
-    return review;
+    try {
+      const [review] = await db.select().from(reviews).where(eq(reviews.id, id));
+      return review;
+    } catch (error) {
+      console.error('Error in getReview:', error);
+      throw new Error('Failed to fetch review');
+    }
   }
 
   async listReviews(): Promise<Review[]> {
-    return await db.select().from(reviews);
+    try {
+      return await db.select().from(reviews);
+    } catch (error) {
+      console.error('Error in listReviews:', error);
+      throw new Error('Failed to list reviews');
+    }
   }
 
   async createReview(review: InsertReview): Promise<Review> {
-    const [newReview] = await db.insert(reviews).values(review).returning();
-    return newReview;
+    try {
+      const [newReview] = await db.insert(reviews).values(review).returning();
+      return newReview;
+    } catch (error) {
+      console.error('Error in createReview:', error);
+      throw new Error('Failed to create review');
+    }
   }
 
   async updateReview(id: number, review: Partial<Review>): Promise<Review> {
-    const [updated] = await db
-      .update(reviews)
-      .set(review)
-      .where(eq(reviews.id, id))
-      .returning();
-    if (!updated) throw new Error("Review not found");
-    return updated;
+    try {
+      const [updated] = await db
+        .update(reviews)
+        .set(review)
+        .where(eq(reviews.id, id))
+        .returning();
+      if (!updated) throw new Error("Review not found");
+      return updated;
+    } catch (error) {
+      console.error('Error in updateReview:', error);
+      throw new Error('Failed to update review');
+    }
   }
 
   // Message methods
   async listMessages(customerId: number): Promise<Message[]> {
-    return await db
-      .select()
-      .from(messages)
-      .where(eq(messages.customerId, customerId))
-      .orderBy(messages.timestamp);
+    try {
+      return await db
+        .select()
+        .from(messages)
+        .where(eq(messages.customerId, customerId))
+        .orderBy(messages.timestamp);
+    } catch (error) {
+      console.error('Error in listMessages:', error);
+      throw new Error('Failed to list messages');
+    }
   }
 
   async createMessage(message: InsertMessage): Promise<Message> {
-    const [newMessage] = await db.insert(messages).values(message).returning();
-    return newMessage;
+    try {
+      const [newMessage] = await db.insert(messages).values(message).returning();
+      return newMessage;
+    } catch (error) {
+      console.error('Error in createMessage:', error);
+      throw new Error('Failed to create message');
+    }
   }
 }
 

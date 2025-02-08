@@ -25,4 +25,13 @@ pool.connect()
     process.exit(1);
   });
 
-export const db = drizzle({ client: pool, schema });
+// Add error handling for the pool
+pool.on('error', (err) => {
+  console.error('Unexpected database error:', err);
+});
+
+export const db = drizzle({ 
+  client: pool,
+  schema,
+  logger: true 
+});
