@@ -14,14 +14,43 @@ const PostgresSessionStore = connectPg(session);
 
 const sessionPool = new Pool({ 
   connectionString: process.env.DATABASE_URL,
-  max: 3,
-  idleTimeoutMillis: 1000 * 60 * 5,
-  connectionTimeoutMillis: 3000,
-  maxUses: 2500,
+  max: 2, // Reduced max connections
+  idleTimeoutMillis: 15000,
+  connectionTimeoutMillis: 5000,
+  maxUses: 5000,
   allowExitOnIdle: true
 });
 
-// Enhanced session pool monitoring
+// Enhanced session pool monitoring with reconnection
+let sessionReconnectAttempts = 0;
+const MAX_SESSION_RECONNECT_ATTEMPTS = 10;
+const INITIAL_SESSION_RECONNECT_DELAY = 500;
+
+sessionPool.on('error', async (err) => {
+  console.error('[Session] Pool error:', err.message);
+
+  if (err.message.includes('connection') || err.message.includes('terminated')) {
+    if (sessionReconnectAttempts < MAX_SESSION_RECONNECT_ATTEMPTS) {
+      const delay = Math.min(INITIAL_SESSION_RECONNECT_DELAY * Math.pow(1.5, sessionReconnectAttempts), 10000);
+      console.log(`[Session] Attempting to reconnect (attempt ${sessionReconnectAttempts + 1}) in ${delay}ms...`);
+
+      await new Promise(resolve => setTimeout(resolve, delay));
+
+      try {
+        await sessionPool.connect();
+        console.log("[Session] Reconnected successfully");
+        sessionReconnectAttempts = 0;
+      } catch (reconnectError) {
+        console.error("[Session] Reconnection failed:", reconnectError.message);
+        sessionReconnectAttempts++;
+      }
+    } else {
+      console.error("[Session] Maximum reconnection attempts reached");
+      process.exit(1);
+    }
+  }
+});
+
 sessionPool.on('connect', (client) => {
   console.log(`[Session] New connection established (total: ${sessionPool.totalCount})`);
 
@@ -42,7 +71,6 @@ sessionPool.on('remove', () => {
   console.log('[Session] Connection removed from pool');
 });
 
-// Test session pool connection with enhanced logging
 sessionPool.connect()
   .then(() => console.log('[Session] Session store connected successfully'))
   .catch(err => {
@@ -58,11 +86,18 @@ export class DatabaseStorage implements IStorage {
       pool: sessionPool,
       createTableIfMissing: true,
       tableName: 'session',
-      pruneSessionInterval: 60 * 15,
-      errorLog: (err) => console.error('[Session Store]', err),
+      pruneSessionInterval: 60 * 15, // 15 minutes
+      errorLog: (err) => {
+        console.error('[Session Store] Error:', err);
+        // Attempt reconnection on severe errors
+        if (err.message.includes('connection') || err.message.includes('terminated')) {
+          sessionPool.connect().catch(connectErr => {
+            console.error('[Session Store] Reconnection failed:', connectErr);
+          });
+        }
+      },
     });
 
-    // Monitor session store events
     this.sessionStore.on('error', (err) => {
       console.error('[Session Store] Error:', err);
     });
@@ -267,23 +302,22 @@ export class DatabaseStorage implements IStorage {
   }
 }
 
-// Monitor session pool health
-setInterval(() => {
-  const poolStatus = sessionPool.totalCount + "/" + sessionPool.idleCount + "/" + sessionPool.waitingCount;
-  const memory = process.memoryUsage();
-  console.log(`[Session] Pool status (total/idle/waiting): ${poolStatus}`);
-  console.log('[Session] Memory usage:', {
-    heapUsed: `${Math.round(memory.heapUsed / 1024 / 1024)}MB`,
-    heapTotal: `${Math.round(memory.heapTotal / 1024 / 1024)}MB`,
-    external: `${Math.round(memory.external / 1024 / 1024)}MB`,
-    rss: `${Math.round(memory.rss / 1024 / 1024)}MB`
-  });
-}, 15000);
+// Simplified monitoring interval
+const sessionMonitoringInterval = setInterval(() => {
+  if (sessionPool.totalCount > 0) {
+    console.log(`[Session] Pool status - total: ${sessionPool.totalCount}, idle: ${sessionPool.idleCount}, waiting: ${sessionPool.waitingCount}`);
+  }
+}, 30000);
 
 // Cleanup session pool on process exit
-process.on('exit', () => {
-  sessionPool.end()
-    .catch(err => console.error('[Session] Error closing session pool:', err));
+process.on('exit', async () => {
+  clearInterval(sessionMonitoringInterval);
+  try {
+    await sessionPool.end();
+    console.log('[Session] Pool closed successfully');
+  } catch (err) {
+    console.error('[Session] Error closing pool:', err);
+  }
 });
 
 export const storage = new DatabaseStorage();

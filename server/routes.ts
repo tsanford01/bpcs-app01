@@ -17,9 +17,8 @@ export function registerRoutes(app: Express): Server {
   const httpServer = createServer(app);
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
 
-  // Check if user is authenticated before accepting WebSocket connection
+  // WebSocket connection handling with improved error handling
   wss.on('connection', (ws: ExtendedWebSocket, req) => {
-    // Extract session ID from cookie
     const cookies = req.headers.cookie?.split(';').reduce((acc, cookie) => {
       const [key, value] = cookie.trim().split('=');
       acc[key] = value;
@@ -33,21 +32,35 @@ export function registerRoutes(app: Express): Server {
       return;
     }
 
-    // Initialize connection with alive status
     ws.isAlive = true;
 
-    // Handle heartbeat
+    // More frequent heartbeat checks
+    const pingInterval = setInterval(() => {
+      if (ws.isAlive === false) {
+        console.log('[WS] Connection dead, terminating');
+        clearInterval(pingInterval);
+        return ws.terminate();
+      }
+      ws.isAlive = false;
+      ws.ping(() => {});
+    }, 15000); // Reduced to 15 seconds
+
     ws.on('pong', () => {
       ws.isAlive = true;
     });
 
-    // Handle errors
     ws.on('error', (error) => {
       console.error('[WS] Error:', error);
+      clearInterval(pingInterval);
       ws.close(1011, 'Internal server error');
     });
 
-    // Handle messages
+    ws.on('close', () => {
+      console.log('[WS] Client disconnected');
+      clearInterval(pingInterval);
+    });
+
+    // Handle messages with improved error handling
     ws.on('message', async (data) => {
       try {
         const message = JSON.parse(data.toString());
@@ -58,18 +71,22 @@ export function registerRoutes(app: Express): Server {
           wss.clients.forEach((client) => {
             const extendedClient = client as ExtendedWebSocket;
             if (extendedClient !== ws && extendedClient.readyState === WebSocket.OPEN) {
-              extendedClient.send(JSON.stringify(savedMessage));
+              try {
+                extendedClient.send(JSON.stringify(savedMessage));
+              } catch (sendError) {
+                console.error('[WS] Send error:', sendError);
+              }
             }
           });
         }
       } catch (error) {
         console.error('[WS] Message handling error:', error);
-        ws.send(JSON.stringify({ error: 'Invalid message format' }));
+        try {
+          ws.send(JSON.stringify({ error: 'Invalid message format' }));
+        } catch (sendError) {
+          console.error('[WS] Error sending error message:', sendError);
+        }
       }
-    });
-
-    ws.on('close', () => {
-      console.log('[WS] Client disconnected');
     });
   });
 
