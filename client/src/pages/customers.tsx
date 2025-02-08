@@ -54,6 +54,19 @@ import {
 
 const CUSTOMERS_PER_PAGE = 12;
 
+type PaymentMethod = {
+  id: string;
+  type: string;
+  last4: string;
+  expiryDate?: string;
+};
+
+type CustomerPreferences = {
+  preferredContactMethod: "email" | "phone" | "sms";
+  servicePreferences: string[];
+  communicationFrequency: "weekly" | "monthly" | "quarterly";
+};
+
 export default function Customers() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -222,6 +235,9 @@ function CustomerDetails({
   customer: Customer;
   onClose: () => void;
 }) {
+  const preferences = customer.preferences as CustomerPreferences | null;
+  const paymentMethods = customer.paymentMethods as PaymentMethod[] | null;
+
   return (
     <Sheet open onOpenChange={(open) => !open && onClose()}>
       <SheetContent className="w-[400px] sm:w-[540px] sm:max-w-[100vw]">
@@ -277,27 +293,25 @@ function CustomerDetails({
                 </div>
               </div>
 
-              <div className="space-y-4">
-                <h4 className="text-sm font-medium">Preferences</h4>
-                <div className="grid gap-2">
-                  {customer.preferences && (
-                    <>
-                      <div>Preferred Contact: {customer.preferences.preferredContactMethod}</div>
-                      <div>Communication: {customer.preferences.communicationFrequency}</div>
-                      <div>
-                        Service Preferences:
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {customer.preferences.servicePreferences.map((pref, i) => (
-                            <Badge key={i} variant="secondary">
-                              {pref}
-                            </Badge>
-                          ))}
-                        </div>
+              {preferences && (
+                <div className="space-y-4">
+                  <h4 className="text-sm font-medium">Preferences</h4>
+                  <div className="grid gap-2">
+                    <div>Preferred Contact: {preferences.preferredContactMethod}</div>
+                    <div>Communication: {preferences.communicationFrequency}</div>
+                    <div>
+                      Service Preferences:
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {preferences.servicePreferences.map((pref, i) => (
+                          <Badge key={i} variant="secondary">
+                            {pref}
+                          </Badge>
+                        ))}
                       </div>
-                    </>
-                  )}
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="space-y-4">
                 <h4 className="text-sm font-medium">Tags</h4>
@@ -329,7 +343,7 @@ function CustomerDetails({
                   </Button>
                 </div>
                 <div className="space-y-2">
-                  {customer.paymentMethods?.map((method, index) => (
+                  {paymentMethods?.map((method, index) => (
                     <Card key={index}>
                       <CardContent className="flex items-center justify-between p-4">
                         <div className="flex items-center">
@@ -376,7 +390,6 @@ function CustomerDetails({
                     View All
                   </Button>
                 </div>
-                {/* Service history would be implemented here */}
                 <p className="text-sm text-muted-foreground">
                   Service history implementation coming soon...
                 </p>
