@@ -218,12 +218,32 @@ export class DatabaseStorage implements IStorage {
   async updateAppointment(id: number, appointment: Partial<Appointment>): Promise<Appointment> {
     try {
       console.time(`[DB] updateAppointment(${id})`);
+      console.log('[DB] Updating appointment with data:', appointment);
+
+      // Clean and validate the data before update
+      const updateData = {
+        ...appointment,
+        // Ensure date is properly handled if provided
+        ...(appointment.date && {
+          date: new Date(appointment.date)
+        }),
+        // Preserve location structure if provided
+        ...(appointment.location && {
+          location: appointment.location
+        })
+      };
+
       const [updated] = await db
         .update(appointments)
-        .set(appointment)
+        .set(updateData)
         .where(eq(appointments.id, id))
         .returning();
-      if (!updated) throw new Error("Appointment not found");
+
+      if (!updated) {
+        console.error(`[DB] Appointment ${id} not found`);
+        throw new Error("Appointment not found");
+      }
+
       console.timeEnd(`[DB] updateAppointment(${id})`);
       return updated;
     } catch (error) {

@@ -81,6 +81,7 @@ function AppointmentItem({
   );
 }
 
+// RescheduleDialog component with improved date handling
 function RescheduleDialog({ 
   appointment, 
   isOpen, 
@@ -96,7 +97,7 @@ function RescheduleDialog({
     resolver: zodResolver(insertAppointmentSchema),
     defaultValues: {
       customerId: appointment.customerId,
-      date: appointment.date,
+      date: new Date(appointment.date).toISOString(),
       serviceType: appointment.serviceType,
       status: appointment.status,
       notes: appointment.notes || '',
@@ -106,10 +107,14 @@ function RescheduleDialog({
 
   const updateAppointment = useMutation({
     mutationFn: async (data: InsertAppointment) => {
-      const res = await apiRequest("PATCH", `/api/appointments/${appointment.id}`, {
-        ...data,
-        location: appointment.location 
-      });
+      // Simplify the update to only include necessary fields
+      const payload = {
+        date: data.date,
+      };
+
+      console.log('Updating appointment with payload:', payload);
+
+      const res = await apiRequest("PATCH", `/api/appointments/${appointment.id}`, payload);
       if (!res.ok) {
         const error = await res.json();
         throw new Error(error.message || 'Failed to update appointment');
@@ -126,6 +131,7 @@ function RescheduleDialog({
       });
     },
     onError: (error) => {
+      console.error('Appointment update error:', error);
       toast({
         title: "Error",
         description: error.message,
@@ -158,24 +164,33 @@ function RescheduleDialog({
                   <FormControl>
                     <Input
                       type="datetime-local"
-                      step="900" 
+                      step="900"
                       {...field}
-                      value={
-                        field.value
-                          ? new Date(field.value).toISOString().slice(0, 16)
-                          : new Date().toISOString().slice(0, 16)
-                      }
                       onChange={(e) => {
                         const inputDate = e.target.value;
                         if (inputDate) {
                           const date = new Date(inputDate);
                           if (!isNaN(date.getTime())) {
+                            // Round to nearest 15 minutes
+                            const minutes = date.getMinutes();
+                            const roundedMinutes = Math.round(minutes / 15) * 15;
+                            date.setMinutes(roundedMinutes);
+                            date.setSeconds(0);
+                            date.setMilliseconds(0);
+
+                            // Handle timezone offset
                             const userTimezoneOffset = date.getTimezoneOffset() * 60000;
                             const adjustedDate = new Date(date.getTime() - userTimezoneOffset);
+
                             field.onChange(adjustedDate.toISOString());
                           }
                         }
                       }}
+                      value={
+                        field.value
+                          ? new Date(field.value).toISOString().slice(0, 16)
+                          : ""
+                      }
                     />
                   </FormControl>
                   <FormMessage />
