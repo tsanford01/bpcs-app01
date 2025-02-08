@@ -129,18 +129,13 @@ function NewAppointmentDialog({ customers }: { customers: Customer[] }) {
       serviceType: undefined,
       status: 'pending',
       notes: '',
-      location: null
+      location: { lat: 0, lng: 0 }  // Default location
     }
   });
 
   const createAppointment = useMutation({
     mutationFn: async (data: InsertAppointment) => {
-      // Ensure date is properly formatted as ISO string
-      const formattedData = {
-        ...data,
-        date: new Date(data.date).toISOString()
-      };
-      const res = await apiRequest("POST", "/api/appointments", formattedData);
+      const res = await apiRequest("POST", "/api/appointments", data);
       if (!res.ok) {
         const error = await res.json();
         throw new Error(error.message || 'Failed to create appointment');
@@ -227,11 +222,7 @@ function NewAppointmentDialog({ customers }: { customers: Customer[] }) {
                     <Input
                       type="datetime-local"
                       {...field}
-                      value={
-                        field.value
-                          ? new Date(field.value).toISOString().slice(0, 16)
-                          : new Date().toISOString().slice(0, 16)
-                      }
+                      value={field.value ? new Date(field.value).toISOString().slice(0, 16) : ''}
                       onChange={(e) => {
                         const date = new Date(e.target.value);
                         if (!isNaN(date.getTime())) {

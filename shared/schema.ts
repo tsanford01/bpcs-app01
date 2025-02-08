@@ -46,6 +46,15 @@ export const messages = pgTable("messages", {
   timestamp: timestamp("timestamp").notNull(),
 });
 
+// Modified schema to handle string dates
+export const insertAppointmentSchema = createInsertSchema(appointments, {
+  date: z.string().transform((str) => new Date(str)),
+  location: z.object({
+    lat: z.number(),
+    lng: z.number()
+  }).nullable(),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
@@ -53,7 +62,6 @@ export const insertUserSchema = createInsertSchema(users).pick({
 });
 
 export const insertCustomerSchema = createInsertSchema(customers);
-export const insertAppointmentSchema = createInsertSchema(appointments);
 export const insertReviewSchema = createInsertSchema(reviews);
 export const insertMessageSchema = createInsertSchema(messages);
 
