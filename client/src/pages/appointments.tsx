@@ -44,6 +44,7 @@ import { cn } from "@/lib/utils";
 const BUSINESS_HOURS_START = 8; // 8 AM
 const BUSINESS_HOURS_END = 18; // 6 PM
 const TIME_SLOT_DURATION = 15; // 15 minutes
+const APPOINTMENT_DURATION = 60; // 1 hour
 
 interface TimeSlot {
   start: Date;
@@ -68,13 +69,23 @@ function TimeGrid({
   // Calculate if a slot would overlap with existing appointments
   const wouldOverlap = (slot: TimeSlot) => {
     if (!slot) return false;
+
+    // Calculate the end time for a full hour appointment
+    const appointmentEnd = addMinutes(slot.start, APPOINTMENT_DURATION);
+
     return appointments.some(apt => {
       const aptStart = new Date(apt.date);
-      const aptEnd = addMinutes(aptStart, TIME_SLOT_DURATION);
+      const aptEnd = addMinutes(aptStart, APPOINTMENT_DURATION);
       return (
         isSameDay(aptStart, selectedDate) &&
-        (isWithinInterval(slot.start, { start: aptStart, end: aptEnd }) ||
-          isWithinInterval(slot.end, { start: aptStart, end: aptEnd }))
+        (
+          // Check if appointment start falls within existing appointment
+          (slot.start >= aptStart && slot.start < aptEnd) ||
+          // Check if appointment end falls within existing appointment
+          (appointmentEnd > aptStart && appointmentEnd <= aptEnd) ||
+          // Check if appointment completely encompasses existing appointment
+          (slot.start <= aptStart && appointmentEnd >= aptEnd)
+        )
       );
     });
   };
@@ -90,26 +101,31 @@ function TimeGrid({
 
       // Create 4 slots per hour (15 minutes each)
       for (let minute = 0; minute < 60; minute += TIME_SLOT_DURATION) {
-        const endTime = addMinutes(startTime, TIME_SLOT_DURATION);
+        const slot: TimeSlot = {
+          start: new Date(startTime),
+          end: addMinutes(new Date(startTime), TIME_SLOT_DURATION),
+          isAvailable: true
+        };
 
         // Check for overlapping appointments
         const overlappingAppointment = appointments.find(apt => {
           const aptStart = new Date(apt.date);
-          const aptEnd = addMinutes(aptStart, TIME_SLOT_DURATION);
+          const aptEnd = addMinutes(aptStart, APPOINTMENT_DURATION);
           return (
             isSameDay(aptStart, selectedDate) &&
-            isWithinInterval(startTime, { start: aptStart, end: aptEnd }) ||
-            isWithinInterval(endTime, { start: aptStart, end: aptEnd })
+            (
+              // Check if slot falls within appointment time
+              (slot.start >= aptStart && slot.start < aptEnd)
+            )
           );
         });
 
-        slots[hour].push({
-          start: new Date(startTime),
-          end: new Date(endTime),
-          isAvailable: !overlappingAppointment,
-          appointment: overlappingAppointment,
-        });
+        if (overlappingAppointment) {
+          slot.isAvailable = false;
+          slot.appointment = overlappingAppointment;
+        }
 
+        slots[hour].push(slot);
         startTime.setMinutes(startTime.getMinutes() + TIME_SLOT_DURATION);
       }
     }
@@ -140,7 +156,7 @@ function TimeGrid({
 
                 const isHovered = hoveredSlot &&
                   slot.start >= hoveredSlot.start &&
-                  slot.start < addMinutes(hoveredSlot.start, TIME_SLOT_DURATION);
+                  slot.start < addMinutes(hoveredSlot.start, APPOINTMENT_DURATION);
 
                 const hasOverlap = isHovered && wouldOverlap(hoveredSlot);
 
