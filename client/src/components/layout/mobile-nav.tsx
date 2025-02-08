@@ -37,23 +37,24 @@ export default function MobileNav() {
       <div className="grid grid-cols-5 gap-1">
         {navItems.slice(0, 4).map((item) => {
           const Icon = item.icon;
+          const isActive = location === item.href;
           return (
             <Link key={item.href} href={item.href}>
-              <a
+              <Button
+                variant="ghost"
+                size="sm"
                 className={cn(
-                  "flex flex-col items-center justify-center py-2",
-                  location === item.href
-                    ? "text-primary"
-                    : "text-muted-foreground"
+                  "w-full h-full flex flex-col items-center justify-center py-2",
+                  isActive ? "text-primary" : "text-muted-foreground"
                 )}
               >
                 <Icon className="w-5 h-5" />
                 <span className="text-xs mt-1">{item.label}</span>
-              </a>
+              </Button>
             </Link>
-          )}
-        )}
-        
+          );
+        })}
+
         <Sheet>
           <SheetTrigger asChild>
             <Button variant="ghost" size="sm" className="w-full h-full">
@@ -70,12 +71,19 @@ export default function MobileNav() {
             <div className="py-4">
               {navItems.slice(4).map((item) => {
                 const Icon = item.icon;
+                const isActive = location === item.href;
                 return (
                   <Link key={item.href} href={item.href}>
-                    <a className="flex items-center px-3 py-2 text-sm">
+                    <Button
+                      variant="ghost"
+                      className={cn(
+                        "w-full justify-start mb-2",
+                        isActive && "bg-accent text-accent-foreground"
+                      )}
+                    >
                       <Icon className="w-5 h-5 mr-3" />
                       {item.label}
-                    </a>
+                    </Button>
                   </Link>
                 );
               })}

@@ -33,23 +33,23 @@ export default function Sidebar() {
             Beckham Pest Control
           </h1>
         </div>
-        
+
         <nav className="flex-1 px-3 py-4 space-y-1">
           {navItems.map((item) => {
             const Icon = item.icon;
+            const isActive = location === item.href;
             return (
               <Link key={item.href} href={item.href}>
-                <a
+                <Button
+                  variant={isActive ? "secondary" : "ghost"}
                   className={cn(
-                    "flex items-center px-3 py-2 text-sm rounded-md",
-                    location === item.href
-                      ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                      : "text-sidebar-foreground hover:bg-sidebar-accent/50"
+                    "w-full justify-start",
+                    isActive && "bg-sidebar-accent text-sidebar-accent-foreground"
                   )}
                 >
                   <Icon className="w-5 h-5 mr-3" />
                   {item.label}
-                </a>
+                </Button>
               </Link>
             );
           })}
