@@ -39,6 +39,48 @@ import {
   InsertAppointment,
 } from "@shared/schema";
 
+// Separate component for each appointment item
+function AppointmentItem({ 
+  appointment, 
+  customer 
+}: { 
+  appointment: Appointment;
+  customer: Customer | undefined;
+}) {
+  const [isRescheduling, setIsRescheduling] = useState(false);
+
+  return (
+    <div className="flex items-center justify-between p-4 border rounded-lg">
+      <div>
+        <p className="font-medium">{customer?.name}</p>
+        <p className="text-sm text-muted-foreground">
+          {format(new Date(appointment.date), "h:mm a")} - {appointment.serviceType}
+        </p>
+        <p className="text-sm text-muted-foreground">
+          {customer?.address}
+        </p>
+      </div>
+      <div className="flex gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setIsRescheduling(true)}
+        >
+          Reschedule
+        </Button>
+        <AppointmentStatusButton appointment={appointment} />
+      </div>
+      {isRescheduling && (
+        <RescheduleDialog
+          appointment={appointment}
+          isOpen={isRescheduling}
+          onClose={() => setIsRescheduling(false)}
+        />
+      )}
+    </div>
+  );
+}
+
 function RescheduleDialog({ 
   appointment, 
   isOpen, 
@@ -199,44 +241,13 @@ export default function Appointments() {
             {dayAppointments.length === 0 ? (
               <p className="text-muted-foreground">No appointments scheduled</p>
             ) : (
-              dayAppointments.map((apt) => {
-                const customer = customers.find((c) => c.id === apt.customerId);
-                const [isRescheduling, setIsRescheduling] = useState(false);
-
-                return (
-                  <div
-                    key={apt.id}
-                    className="flex items-center justify-between p-4 border rounded-lg"
-                  >
-                    <div>
-                      <p className="font-medium">{customer?.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {format(new Date(apt.date), "h:mm a")} - {apt.serviceType}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {customer?.address}
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setIsRescheduling(true)}
-                      >
-                        Reschedule
-                      </Button>
-                      <AppointmentStatusButton appointment={apt} />
-                    </div>
-                    {isRescheduling && (
-                      <RescheduleDialog
-                        appointment={apt}
-                        isOpen={isRescheduling}
-                        onClose={() => setIsRescheduling(false)}
-                      />
-                    )}
-                  </div>
-                );
-              })
+              dayAppointments.map((apt) => (
+                <AppointmentItem
+                  key={apt.id}
+                  appointment={apt}
+                  customer={customers.find((c) => c.id === apt.customerId)}
+                />
+              ))
             )}
           </div>
         </div>
@@ -245,6 +256,7 @@ export default function Appointments() {
   );
 }
 
+// Rest of the file (NewAppointmentDialog and AppointmentStatusButton) remains unchanged
 function NewAppointmentDialog({ customers }: { customers: Customer[] }) {
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
