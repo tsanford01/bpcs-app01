@@ -12,54 +12,43 @@ import { Pool } from "@neondatabase/serverless";
 
 const PostgresSessionStore = connectPg(session);
 
-// Create a new pool specifically for sessions with optimized settings
 const sessionPool = new Pool({ 
   connectionString: process.env.DATABASE_URL,
-  max: 3, // Limit concurrent connections for session store
-  idleTimeoutMillis: 1000 * 60 * 5, // 5 minutes
-  connectionTimeoutMillis: 3000, // 3 seconds
-  maxUses: 2500, // Limit reuse of connections
-  maxLifetimeSeconds: 3600, // Maximum lifetime of 1 hour
+  max: 3,
+  idleTimeoutMillis: 1000 * 60 * 5,
+  connectionTimeoutMillis: 3000,
+  maxUses: 2500,
   allowExitOnIdle: true
 });
 
-// Test session pool connection
-sessionPool.connect()
-  .then(() => console.log('Session store connected successfully'))
-  .catch(err => {
-    console.error('Session store connection error:', err);
-    process.exit(1);
+// Enhanced session pool monitoring
+sessionPool.on('connect', (client) => {
+  console.log(`[Session] New connection established (total: ${sessionPool.totalCount})`);
+
+  client.on('error', (err) => {
+    console.error('[Session] Client error:', err.message);
   });
 
-// Add error handling for session pool with exponential backoff
-let sessionReconnectAttempts = 0;
-const MAX_SESSION_RECONNECT_ATTEMPTS = 5;
-const INITIAL_SESSION_RECONNECT_DELAY = 1000;
-
-sessionPool.on('error', (err) => {
-  console.error('Session pool error:', err);
-  if (err.message.includes('connection') || err.message.includes('terminated')) {
-    if (sessionReconnectAttempts < MAX_SESSION_RECONNECT_ATTEMPTS) {
-      const delay = INITIAL_SESSION_RECONNECT_DELAY * Math.pow(2, sessionReconnectAttempts);
-      console.log(`Attempting to reconnect session pool (attempt ${sessionReconnectAttempts + 1})...`);
-      setTimeout(() => {
-        sessionPool.connect()
-          .then(() => {
-            console.log('Session pool reconnected successfully');
-            sessionReconnectAttempts = 0;
-          })
-          .catch(err => {
-            console.error('Session pool reconnection failed:', err);
-            sessionReconnectAttempts++;
-            if (sessionReconnectAttempts >= MAX_SESSION_RECONNECT_ATTEMPTS) {
-              console.error('Maximum session reconnection attempts reached');
-              process.exit(1);
-            }
-          });
-      }, delay);
-    }
-  }
+  client.on('end', () => {
+    console.log('[Session] Client connection ended');
+  });
 });
+
+sessionPool.on('acquire', () => {
+  console.log(`[Session] Connection acquired (total/idle/waiting): ${sessionPool.totalCount}/${sessionPool.idleCount}/${sessionPool.waitingCount}`);
+});
+
+sessionPool.on('remove', () => {
+  console.log('[Session] Connection removed from pool');
+});
+
+// Test session pool connection with enhanced logging
+sessionPool.connect()
+  .then(() => console.log('[Session] Session store connected successfully'))
+  .catch(err => {
+    console.error('[Session] Session store connection error:', err);
+    process.exit(1);
+  });
 
 export class DatabaseStorage implements IStorage {
   sessionStore: session.Store;
@@ -69,178 +58,210 @@ export class DatabaseStorage implements IStorage {
       pool: sessionPool,
       createTableIfMissing: true,
       tableName: 'session',
-      pruneSessionInterval: 60 * 15, // Cleanup every 15 minutes
-      // Add session store error handling
-      errorLog: console.error,
+      pruneSessionInterval: 60 * 15,
+      errorLog: (err) => console.error('[Session Store]', err),
+    });
+
+    // Monitor session store events
+    this.sessionStore.on('error', (err) => {
+      console.error('[Session Store] Error:', err);
+    });
+
+    this.sessionStore.on('connect', () => {
+      console.log('[Session Store] Connected successfully');
     });
   }
 
   async getUser(id: number): Promise<User | undefined> {
     try {
+      console.time(`[DB] getUser(${id})`);
       const [user] = await db.select().from(users).where(eq(users.id, id));
+      console.timeEnd(`[DB] getUser(${id})`);
       return user;
     } catch (error) {
-      console.error('Error in getUser:', error);
+      console.error('[DB] Error in getUser:', error);
       throw new Error('Failed to fetch user');
     }
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
     try {
+      console.time(`[DB] getUserByUsername(${username})`);
       const [user] = await db.select().from(users).where(eq(users.username, username));
+      console.timeEnd(`[DB] getUserByUsername(${username})`);
       return user;
     } catch (error) {
-      console.error('Error in getUserByUsername:', error);
+      console.error('[DB] Error in getUserByUsername:', error);
       throw new Error('Failed to fetch user by username');
     }
   }
 
   async createUser(user: InsertUser): Promise<User> {
     try {
+      console.time('[DB] createUser');
       const [newUser] = await db.insert(users).values(user).returning();
+      console.timeEnd('[DB] createUser');
       return newUser;
     } catch (error) {
-      console.error('Error in createUser:', error);
+      console.error('[DB] Error in createUser:', error);
       throw new Error('Failed to create user');
     }
   }
 
   async getCustomer(id: number): Promise<Customer | undefined> {
     try {
+      console.time(`[DB] getCustomer(${id})`);
       const [customer] = await db.select().from(customers).where(eq(customers.id, id));
+      console.timeEnd(`[DB] getCustomer(${id})`);
       return customer;
     } catch (error) {
-      console.error('Error in getCustomer:', error);
+      console.error('[DB] Error in getCustomer:', error);
       throw new Error('Failed to fetch customer');
     }
   }
 
   async listCustomers(): Promise<Customer[]> {
     try {
-      return await db.select().from(customers);
+      console.time('[DB] listCustomers');
+      const customerList = await db.select().from(customers);
+      console.timeEnd('[DB] listCustomers');
+      return customerList;
     } catch (error) {
-      console.error('Error in listCustomers:', error);
+      console.error('[DB] Error in listCustomers:', error);
       throw new Error('Failed to list customers');
     }
   }
 
   async createCustomer(customer: InsertCustomer): Promise<Customer> {
     try {
+      console.time('[DB] createCustomer');
       const [newCustomer] = await db.insert(customers).values(customer).returning();
+      console.timeEnd('[DB] createCustomer');
       return newCustomer;
     } catch (error) {
-      console.error('Error in createCustomer:', error);
+      console.error('[DB] Error in createCustomer:', error);
       throw new Error('Failed to create customer');
     }
   }
 
   async getAppointment(id: number): Promise<Appointment | undefined> {
     try {
+      console.time(`[DB] getAppointment(${id})`);
       const [appointment] = await db.select().from(appointments).where(eq(appointments.id, id));
+      console.timeEnd(`[DB] getAppointment(${id})`);
       return appointment;
     } catch (error) {
-      console.error('Error in getAppointment:', error);
+      console.error('[DB] Error in getAppointment:', error);
       throw new Error('Failed to fetch appointment');
     }
   }
 
   async listAppointments(): Promise<Appointment[]> {
     try {
-      return await db.select().from(appointments);
+      console.time('[DB] listAppointments');
+      const appointmentList = await db.select().from(appointments);
+      console.timeEnd('[DB] listAppointments');
+      return appointmentList;
     } catch (error) {
-      console.error('Error in listAppointments:', error);
+      console.error('[DB] Error in listAppointments:', error);
       throw new Error('Failed to list appointments');
     }
   }
 
   async createAppointment(appointment: InsertAppointment): Promise<Appointment> {
     try {
+      console.time('[DB] createAppointment');
       const [newAppointment] = await db.insert(appointments).values(appointment).returning();
+      console.timeEnd('[DB] createAppointment');
       return newAppointment;
     } catch (error) {
-      console.error('Error in createAppointment:', error);
+      console.error('[DB] Error in createAppointment:', error);
       throw new Error('Failed to create appointment');
     }
   }
 
   async updateAppointment(id: number, appointment: Partial<Appointment>): Promise<Appointment> {
     try {
+      console.time(`[DB] updateAppointment(${id})`);
       const [updated] = await db
         .update(appointments)
         .set(appointment)
         .where(eq(appointments.id, id))
         .returning();
       if (!updated) throw new Error("Appointment not found");
+      console.timeEnd(`[DB] updateAppointment(${id})`);
       return updated;
     } catch (error) {
-      console.error('Error in updateAppointment:', error);
+      console.error('[DB] Error in updateAppointment:', error);
       throw new Error('Failed to update appointment');
-    }
-  }
-
-  async getReview(id: number): Promise<Review | undefined> {
-    try {
-      const [review] = await db.select().from(reviews).where(eq(reviews.id, id));
-      return review;
-    } catch (error) {
-      console.error('Error in getReview:', error);
-      throw new Error('Failed to fetch review');
     }
   }
 
   async listReviews(): Promise<Review[]> {
     try {
-      return await db.select().from(reviews);
+      console.time('[DB] listReviews');
+      const reviewList = await db.select().from(reviews);
+      console.timeEnd('[DB] listReviews');
+      return reviewList;
     } catch (error) {
-      console.error('Error in listReviews:', error);
+      console.error('[DB] Error in listReviews:', error);
       throw new Error('Failed to list reviews');
     }
   }
 
   async createReview(review: InsertReview): Promise<Review> {
     try {
+      console.time('[DB] createReview');
       const [newReview] = await db.insert(reviews).values(review).returning();
+      console.timeEnd('[DB] createReview');
       return newReview;
     } catch (error) {
-      console.error('Error in createReview:', error);
+      console.error('[DB] Error in createReview:', error);
       throw new Error('Failed to create review');
     }
   }
 
   async updateReview(id: number, review: Partial<Review>): Promise<Review> {
     try {
+      console.time(`[DB] updateReview(${id})`);
       const [updated] = await db
         .update(reviews)
         .set(review)
         .where(eq(reviews.id, id))
         .returning();
       if (!updated) throw new Error("Review not found");
+      console.timeEnd(`[DB] updateReview(${id})`);
       return updated;
     } catch (error) {
-      console.error('Error in updateReview:', error);
+      console.error('[DB] Error in updateReview:', error);
       throw new Error('Failed to update review');
     }
   }
 
   async listMessages(customerId: number): Promise<Message[]> {
     try {
-      return await db
+      console.time(`[DB] listMessages(${customerId})`);
+      const messageList = await db
         .select()
         .from(messages)
         .where(eq(messages.customerId, customerId))
         .orderBy(messages.timestamp);
+      console.timeEnd(`[DB] listMessages(${customerId})`);
+      return messageList;
     } catch (error) {
-      console.error('Error in listMessages:', error);
+      console.error('[DB] Error in listMessages:', error);
       throw new Error('Failed to list messages');
     }
   }
 
   async createMessage(message: InsertMessage): Promise<Message> {
     try {
+      console.time('[DB] createMessage');
       const [newMessage] = await db.insert(messages).values(message).returning();
+      console.timeEnd('[DB] createMessage');
       return newMessage;
     } catch (error) {
-      console.error('Error in createMessage:', error);
+      console.error('[DB] Error in createMessage:', error);
       throw new Error('Failed to create message');
     }
   }
@@ -249,13 +270,20 @@ export class DatabaseStorage implements IStorage {
 // Monitor session pool health
 setInterval(() => {
   const poolStatus = sessionPool.totalCount + "/" + sessionPool.idleCount + "/" + sessionPool.waitingCount;
-  console.log(`Session pool status (total/idle/waiting): ${poolStatus}`);
-}, 30000);
+  const memory = process.memoryUsage();
+  console.log(`[Session] Pool status (total/idle/waiting): ${poolStatus}`);
+  console.log('[Session] Memory usage:', {
+    heapUsed: `${Math.round(memory.heapUsed / 1024 / 1024)}MB`,
+    heapTotal: `${Math.round(memory.heapTotal / 1024 / 1024)}MB`,
+    external: `${Math.round(memory.external / 1024 / 1024)}MB`,
+    rss: `${Math.round(memory.rss / 1024 / 1024)}MB`
+  });
+}, 15000);
 
 // Cleanup session pool on process exit
 process.on('exit', () => {
   sessionPool.end()
-    .catch(err => console.error('Error closing session pool:', err));
+    .catch(err => console.error('[Session] Error closing session pool:', err));
 });
 
 export const storage = new DatabaseStorage();
