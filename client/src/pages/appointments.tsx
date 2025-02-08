@@ -222,11 +222,21 @@ function NewAppointmentDialog({ customers }: { customers: Customer[] }) {
                     <Input
                       type="datetime-local"
                       {...field}
-                      value={field.value ? new Date(field.value).toISOString().slice(0, 16) : ''}
+                      value={
+                        field.value
+                          ? new Date(field.value).toISOString().slice(0, 16)
+                          : new Date().toISOString().slice(0, 16)
+                      }
                       onChange={(e) => {
-                        const date = new Date(e.target.value);
-                        if (!isNaN(date.getTime())) {
-                          field.onChange(date.toISOString());
+                        const inputDate = e.target.value;
+                        if (inputDate) {
+                          const date = new Date(inputDate);
+                          if (!isNaN(date.getTime())) {
+                            // Ensure timezone offset is properly handled
+                            const userTimezoneOffset = date.getTimezoneOffset() * 60000;
+                            const adjustedDate = new Date(date.getTime() - userTimezoneOffset);
+                            field.onChange(adjustedDate.toISOString());
+                          }
                         }
                       }}
                     />
