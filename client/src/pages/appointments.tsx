@@ -1,7 +1,7 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useState } from "react";
-import { Calendar as CalendarIcon, Plus } from "lucide-react";
-import { format } from "date-fns";
+import { useState, useMemo } from "react";
+import { Calendar as CalendarIcon, Plus, ChevronLeft, ChevronRight } from "lucide-react";
+import { format, addDays, startOfDay, addMinutes, isSameDay, isWithinInterval } from "date-fns";
 import {
   Dialog,
   DialogContent,
@@ -38,8 +38,258 @@ import {
   InsertAppointment,
 } from "@shared/schema";
 import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+
+// Constants for time slots
+const BUSINESS_HOURS_START = 8; // 8 AM
+const BUSINESS_HOURS_END = 18; // 6 PM
+const TIME_SLOT_DURATION = 15; // 15 minutes
+
+interface TimeSlot {
+  start: Date;
+  end: Date;
+  isAvailable: boolean;
+  appointment?: Appointment;
+}
+
+function generateTimeSlots(selectedDate: Date, appointments: Appointment[]): TimeSlot[] {
+  const slots: TimeSlot[] = [];
+  const startTime = new Date(selectedDate);
+  startTime.setHours(BUSINESS_HOURS_START, 0, 0, 0);
+
+  while (startTime.getHours() < BUSINESS_HOURS_END) {
+    const endTime = addMinutes(startTime, TIME_SLOT_DURATION);
+
+    // Check if there's an overlapping appointment
+    const overlappingAppointment = appointments.find(apt => {
+      const aptStart = new Date(apt.date);
+      const aptEnd = addMinutes(aptStart, TIME_SLOT_DURATION);
+      return (
+        isSameDay(aptStart, selectedDate) &&
+        isWithinInterval(startTime, { start: aptStart, end: aptEnd }) ||
+        isWithinInterval(endTime, { start: aptStart, end: aptEnd })
+      );
+    });
+
+    slots.push({
+      start: new Date(startTime),
+      end: new Date(endTime),
+      isAvailable: !overlappingAppointment,
+      appointment: overlappingAppointment,
+    });
+
+    startTime.setMinutes(startTime.getMinutes() + TIME_SLOT_DURATION);
+  }
+
+  return slots;
+}
+
+function TimeGrid({ 
+  selectedDate, 
+  appointments, 
+  onSelectSlot,
+  customers 
+}: { 
+  selectedDate: Date;
+  appointments: Appointment[];
+  onSelectSlot: (slot: TimeSlot) => void;
+  customers: Customer[];
+}) {
+  const timeSlots = useMemo(
+    () => generateTimeSlots(selectedDate, appointments),
+    [selectedDate, appointments]
+  );
+
+  return (
+    <ScrollArea className="h-[600px] w-full rounded-md border">
+      <div className="p-4">
+        {timeSlots.map((slot, index) => {
+          const customer = slot.appointment 
+            ? customers.find(c => c.id === slot.appointment?.customerId)
+            : undefined;
+
+          return (
+            <div
+              key={index}
+              className={cn(
+                "p-2 mb-1 rounded-lg border cursor-pointer hover:bg-accent transition-colors",
+                slot.isAvailable 
+                  ? "bg-background" 
+                  : "bg-primary/10"
+              )}
+              onClick={() => slot.isAvailable && onSelectSlot(slot)}
+            >
+              <div className="flex justify-between items-center">
+                <span className="text-sm">
+                  {format(slot.start, "h:mm a")} - {format(slot.end, "h:mm a")}
+                </span>
+                {slot.appointment && (
+                  <div className="text-sm text-muted-foreground">
+                    {customer?.name} - {slot.appointment.serviceType}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </ScrollArea>
+  );
+}
+
+function NewAppointmentDialog({ 
+  customers,
+  selectedTimeSlot,
+  onClose 
+}: { 
+  customers: Customer[];
+  selectedTimeSlot?: TimeSlot;
+  onClose: () => void;
+}) {
+  const { toast } = useToast();
+
+  const form = useForm<InsertAppointment>({
+    resolver: zodResolver(insertAppointmentSchema),
+    defaultValues: {
+      customerId: undefined,
+      date: selectedTimeSlot?.start.toISOString() || new Date().toISOString(),
+      serviceType: undefined,
+      status: 'pending',
+      notes: '',
+      location: null
+    }
+  });
+
+  const createAppointment = useMutation({
+    mutationFn: async (data: InsertAppointment) => {
+      const res = await apiRequest("POST", "/api/appointments", data);
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || 'Failed to create appointment');
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      onClose();
+      form.reset();
+      queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
+      toast({
+        title: "Appointment created",
+        description: "The appointment has been scheduled successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  return (
+    <DialogContent>
+      <DialogHeader>
+        <DialogTitle>Schedule New Appointment</DialogTitle>
+        <DialogDescription>
+          Create a new service appointment for a customer
+        </DialogDescription>
+      </DialogHeader>
+
+      <Form {...form}>
+        <form
+          onSubmit={form.handleSubmit((data) => createAppointment.mutate(data))}
+          className="space-y-4"
+        >
+          <FormField
+            control={form.control}
+            name="customerId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Customer</FormLabel>
+                <Select
+                  onValueChange={(value) => field.onChange(Number(value))}
+                  value={field.value?.toString()}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a customer" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {customers.map((customer) => (
+                      <SelectItem
+                        key={customer.id}
+                        value={customer.id.toString()}
+                      >
+                        {customer.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="date"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Date & Time</FormLabel>
+                <FormControl>
+                  <Input
+                    type="text"
+                    readOnly
+                    value={format(new Date(field.value), "PPP 'at' h:mm a")}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="serviceType"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Service Type</FormLabel>
+                <Select
+                  onValueChange={field.onChange}
+                  value={field.value}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select service type" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="general">General Pest Control</SelectItem>
+                    <SelectItem value="termite">Termite Treatment</SelectItem>
+                    <SelectItem value="rodent">Rodent Control</SelectItem>
+                    <SelectItem value="mosquito">Mosquito Treatment</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={createAppointment.isPending}
+          >
+            Create Appointment
+          </Button>
+        </form>
+      </Form>
+    </DialogContent>
+  );
+}
 
 function AppointmentItem({
   appointment,
@@ -198,173 +448,6 @@ function RescheduleDialog({
   );
 }
 
-function NewAppointmentDialog({ customers }: { customers: Customer[] }) {
-  const [open, setOpen] = useState(false);
-  const { toast } = useToast();
-
-  const form = useForm<InsertAppointment>({
-    resolver: zodResolver(insertAppointmentSchema),
-    defaultValues: {
-      customerId: undefined,
-      date: new Date().toISOString(),
-      serviceType: undefined,
-      status: 'pending',
-      notes: '',
-      location: { lat: 0, lng: 0 }
-    }
-  });
-
-  const createAppointment = useMutation({
-    mutationFn: async (data: InsertAppointment) => {
-      const res = await apiRequest("POST", "/api/appointments", data);
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || 'Failed to create appointment');
-      }
-      return res.json();
-    },
-    onSuccess: () => {
-      setOpen(false);
-      form.reset();
-      queryClient.invalidateQueries({ queryKey: ["/api/appointments"] });
-      toast({
-        title: "Appointment created",
-        description: "The appointment has been scheduled successfully",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleDateTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    if (value) {
-      // Create a Date object in local timezone
-      const date = new Date(value);
-      form.setValue('date', date.toISOString());
-    }
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          New Appointment
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Schedule New Appointment</DialogTitle>
-          <DialogDescription>
-            Create a new service appointment for a customer
-          </DialogDescription>
-        </DialogHeader>
-
-        <Form {...form}>
-          <form
-            onSubmit={form.handleSubmit((data) => createAppointment.mutate(data))}
-            className="space-y-4"
-          >
-            <FormField
-              control={form.control}
-              name="customerId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Customer</FormLabel>
-                  <Select
-                    onValueChange={(value) => field.onChange(Number(value))}
-                    value={field.value?.toString()}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a customer" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {customers.map((customer) => (
-                        <SelectItem
-                          key={customer.id}
-                          value={customer.id.toString()}
-                        >
-                          {customer.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="date"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Date & Time</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="datetime-local"
-                      step={900} // 15 minutes
-                      onChange={handleDateTimeChange}
-                      value={
-                        field.value
-                          ? new Date(field.value).toLocaleString('sv-SE').slice(0, 16)
-                          : ''
-                      }
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="serviceType"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Service Type</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    value={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select service type" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="general">General Pest Control</SelectItem>
-                      <SelectItem value="termite">Termite Treatment</SelectItem>
-                      <SelectItem value="rodent">Rodent Control</SelectItem>
-                      <SelectItem value="mosquito">Mosquito Treatment</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={createAppointment.isPending}
-            >
-              Create Appointment
-            </Button>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
-  );
-}
 
 function AppointmentStatusButton({ appointment }: { appointment: Appointment }) {
   const { toast } = useToast();
@@ -411,6 +494,10 @@ function AppointmentStatusButton({ appointment }: { appointment: Appointment }) 
 }
 
 export default function Appointments() {
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState<TimeSlot>();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
   const { data: appointments = [] } = useQuery<Appointment[]>({
     queryKey: ["/api/appointments"],
   });
@@ -419,56 +506,80 @@ export default function Appointments() {
     queryKey: ["/api/customers"],
   });
 
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-
-  const dayAppointments = appointments.filter((apt) => {
-    const aptDate = new Date(apt.date);
-    return (
-      aptDate.getDate() === selectedDate.getDate() &&
-      aptDate.getMonth() === selectedDate.getMonth() &&
-      aptDate.getFullYear() === selectedDate.getFullYear()
-    );
-  });
-
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Appointments</h1>
           <p className="text-muted-foreground">Manage your service schedule</p>
         </div>
-        <NewAppointmentDialog customers={customers} />
+        {/*<NewAppointmentDialog customers={customers} />*/}
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <div className="md:col-span-1">
+      <div className="grid gap-6 md:grid-cols-[300px_1fr]">
+        <div className="space-y-4">
           <Calendar
             mode="single"
             selected={selectedDate}
             onSelect={(date) => date && setSelectedDate(date)}
-            className="border rounded-lg"
+            className="rounded-md border"
+            disabled={(date) =>
+              date < startOfDay(new Date())
+            }
           />
-        </div>
 
-        <div className="md:col-span-1 lg:col-span-2 border rounded-lg p-4">
-          <h2 className="font-semibold mb-4">
-            Appointments for {format(selectedDate, "MMMM d, yyyy")}
-          </h2>
-          <div className="space-y-4">
-            {dayAppointments.length === 0 ? (
-              <p className="text-muted-foreground">No appointments scheduled</p>
-            ) : (
-              dayAppointments.map((apt) => (
-                <AppointmentItem
-                  key={apt.id}
-                  appointment={apt}
-                  customer={customers.find((c) => c.id === apt.customerId)}
-                />
-              ))
-            )}
+          <div className="rounded-lg border p-3">
+            <h3 className="font-medium mb-2">Selected Date</h3>
+            <p className="text-sm text-muted-foreground">
+              {format(selectedDate, "PPPP")}
+            </p>
           </div>
         </div>
+
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <h2 className="text-lg font-semibold">Available Time Slots</h2>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setSelectedDate(addDays(selectedDate, -1))}
+                disabled={selectedDate <= startOfDay(new Date())}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setSelectedDate(addDays(selectedDate, 1))}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
+          <TimeGrid
+            selectedDate={selectedDate}
+            appointments={appointments}
+            customers={customers}
+            onSelectSlot={(slot) => {
+              setSelectedTimeSlot(slot);
+              setIsDialogOpen(true);
+            }}
+          />
+        </div>
       </div>
+
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <NewAppointmentDialog
+          customers={customers}
+          selectedTimeSlot={selectedTimeSlot}
+          onClose={() => {
+            setIsDialogOpen(false);
+            setSelectedTimeSlot(undefined);
+          }}
+        />
+      </Dialog>
     </div>
   );
 }
