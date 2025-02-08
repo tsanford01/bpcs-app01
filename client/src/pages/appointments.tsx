@@ -38,7 +38,6 @@ import {
   InsertAppointment,
 } from "@shared/schema";
 import { Calendar } from "@/components/ui/calendar";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
 // Constants for time slots
@@ -53,38 +52,6 @@ interface TimeSlot {
   appointment?: Appointment;
 }
 
-function generateTimeSlots(selectedDate: Date, appointments: Appointment[]): TimeSlot[] {
-  const slots: TimeSlot[] = [];
-  const startTime = new Date(selectedDate);
-  startTime.setHours(BUSINESS_HOURS_START, 0, 0, 0);
-
-  while (startTime.getHours() < BUSINESS_HOURS_END) {
-    const endTime = addMinutes(startTime, TIME_SLOT_DURATION);
-
-    // Check if there's an overlapping appointment
-    const overlappingAppointment = appointments.find(apt => {
-      const aptStart = new Date(apt.date);
-      const aptEnd = addMinutes(aptStart, TIME_SLOT_DURATION);
-      return (
-        isSameDay(aptStart, selectedDate) &&
-        isWithinInterval(startTime, { start: aptStart, end: aptEnd }) ||
-        isWithinInterval(endTime, { start: aptStart, end: aptEnd })
-      );
-    });
-
-    slots.push({
-      start: new Date(startTime),
-      end: new Date(endTime),
-      isAvailable: !overlappingAppointment,
-      appointment: overlappingAppointment,
-    });
-
-    startTime.setMinutes(startTime.getMinutes() + TIME_SLOT_DURATION);
-  }
-
-  return slots;
-}
-
 function TimeGrid({ 
   selectedDate, 
   appointments, 
@@ -96,45 +63,99 @@ function TimeGrid({
   onSelectSlot: (slot: TimeSlot) => void;
   customers: Customer[];
 }) {
-  const timeSlots = useMemo(
-    () => generateTimeSlots(selectedDate, appointments),
-    [selectedDate, appointments]
-  );
+  const timeSlots = useMemo(() => {
+    const slots: { [hour: number]: TimeSlot[] } = {};
+
+    // Initialize slots for each hour
+    for (let hour = BUSINESS_HOURS_START; hour < BUSINESS_HOURS_END; hour++) {
+      slots[hour] = [];
+      const startTime = new Date(selectedDate);
+      startTime.setHours(hour, 0, 0, 0);
+
+      // Create 4 slots per hour (15 minutes each)
+      for (let minute = 0; minute < 60; minute += TIME_SLOT_DURATION) {
+        const endTime = addMinutes(startTime, TIME_SLOT_DURATION);
+
+        // Check for overlapping appointments
+        const overlappingAppointment = appointments.find(apt => {
+          const aptStart = new Date(apt.date);
+          const aptEnd = addMinutes(aptStart, TIME_SLOT_DURATION);
+          return (
+            isSameDay(aptStart, selectedDate) &&
+            isWithinInterval(startTime, { start: aptStart, end: aptEnd }) ||
+            isWithinInterval(endTime, { start: aptStart, end: aptEnd })
+          );
+        });
+
+        slots[hour].push({
+          start: new Date(startTime),
+          end: new Date(endTime),
+          isAvailable: !overlappingAppointment,
+          appointment: overlappingAppointment,
+        });
+
+        startTime.setMinutes(startTime.getMinutes() + TIME_SLOT_DURATION);
+      }
+    }
+    return slots;
+  }, [selectedDate, appointments]);
 
   return (
-    <ScrollArea className="h-[600px] w-full rounded-md border">
-      <div className="p-4">
-        {timeSlots.map((slot, index) => {
-          const customer = slot.appointment 
-            ? customers.find(c => c.id === slot.appointment?.customerId)
-            : undefined;
-
-          return (
-            <div
-              key={index}
-              className={cn(
-                "p-2 mb-1 rounded-lg border cursor-pointer hover:bg-accent transition-colors",
-                slot.isAvailable 
-                  ? "bg-background" 
-                  : "bg-primary/10"
-              )}
-              onClick={() => slot.isAvailable && onSelectSlot(slot)}
-            >
-              <div className="flex justify-between items-center">
-                <span className="text-sm">
-                  {format(slot.start, "h:mm a")} - {format(slot.end, "h:mm a")}
-                </span>
-                {slot.appointment && (
-                  <div className="text-sm text-muted-foreground">
-                    {customer?.name} - {slot.appointment.serviceType}
-                  </div>
-                )}
-              </div>
+    <div className="border rounded-lg p-4">
+      <div className="grid grid-cols-[100px_1fr] gap-4">
+        <div></div>
+        <div className="grid grid-cols-4 gap-2 mb-2">
+          {[0, 15, 30, 45].map((minute) => (
+            <div key={minute} className="text-center text-sm text-muted-foreground">
+              :{minute.toString().padStart(2, '0')}
             </div>
-          );
-        })}
+          ))}
+        </div>
+        {Object.entries(timeSlots).map(([hour, slots]) => (
+          <div key={hour} className="contents">
+            <div className="text-sm font-medium">
+              {format(slots[0].start, 'h a')}
+            </div>
+            <div className="grid grid-cols-4 gap-2">
+              {slots.map((slot, index) => {
+                const customer = slot.appointment 
+                  ? customers.find(c => c.id === slot.appointment?.customerId)
+                  : undefined;
+
+                return (
+                  <div
+                    key={index}
+                    onClick={() => slot.isAvailable && onSelectSlot(slot)}
+                    className={cn(
+                      "h-12 rounded-md border p-1 cursor-pointer transition-colors relative group",
+                      slot.isAvailable 
+                        ? "hover:bg-accent hover:text-accent-foreground"
+                        : "bg-primary/10 cursor-not-allowed"
+                    )}
+                  >
+                    {slot.appointment && (
+                      <div className="absolute inset-1 rounded bg-primary/20 p-1">
+                        <p className="text-xs font-medium truncate">
+                          {customer?.name}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {slot.appointment.serviceType}
+                        </p>
+                      </div>
+                    )}
+                    {slot.isAvailable && (
+                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-accent/50 rounded-md">
+                        <Plus className="h-4 w-4" />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </div>
-    </ScrollArea>
+    </div>
   );
 }
 
@@ -447,6 +468,7 @@ function RescheduleDialog({
     </Dialog>
   );
 }
+
 
 
 function AppointmentStatusButton({ appointment }: { appointment: Appointment }) {
