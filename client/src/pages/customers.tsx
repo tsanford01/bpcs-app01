@@ -68,6 +68,8 @@ type CustomerWithRelations = Customer & {
   addresses?: CustomerAddress[];
   contacts?: CustomerContact[];
   paymentMethods?: PaymentMethod[];
+  serviceCount?: number;
+  status?: CustomerStatus;
 };
 
 type ViewMode = "grid" | "table";
@@ -86,7 +88,7 @@ const newCustomerFormSchema = z.object({
   serviceAddons: z.array(z.string()).default([]),
   contact: z.object({
     type: z.enum(["phone", "email"]),
-    value: z.string().min(1, "Contact value is required").refine((val, ctx) => {
+    value: z.string().min(1, "Contact value is required").superRefine((val, ctx) => {
       if (ctx.path[ctx.path.length - 2] === "phone") {
         // Validate format: (123) 456-7890 or 123-456-7890
         if (!/^\(\d{3}\)\s?\d{3}-\d{4}$|^\d{3}-\d{3}-\d{4}$/.test(val)) {
@@ -646,9 +648,20 @@ export default function Customers() {
   const [isAddingCustomer, setIsAddingCustomer] = useState(false);
   const { toast } = useToast();
 
-
   const { data: customers = [] } = useQuery<CustomerWithRelations[]>({
     queryKey: ["/api/customers"],
+  });
+
+  // Add filtering logic
+  const filteredCustomers = customers.filter((customer) => {
+    const matchesSearch = !searchQuery || 
+      customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      customer.email.toLowerCase().includes(searchQuery.toLowerCase());
+
+    const matchesStatus = statusFilter === "all" || customer.status === statusFilter;
+    const matchesPlan = servicePlanFilter === "all" || customer.servicePlan === servicePlanFilter;
+
+    return matchesSearch && matchesStatus && matchesPlan;
   });
 
   return (
