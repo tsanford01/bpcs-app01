@@ -1,6 +1,7 @@
 import { useAuth } from "@/hooks/use-auth";
 import { Loader2 } from "lucide-react";
 import { Route, useLocation } from "wouter";
+import { useEffect } from "react";
 
 export function ProtectedRoute({
   path,
@@ -11,6 +12,12 @@ export function ProtectedRoute({
 }) {
   const { user, isLoading } = useAuth();
   const [, setLocation] = useLocation();
+
+  useEffect(() => {
+    if (!isLoading && !user) {
+      setLocation("/auth");
+    }
+  }, [user, isLoading, setLocation]);
 
   if (isLoading) {
     return (
@@ -23,7 +30,6 @@ export function ProtectedRoute({
   }
 
   if (!user) {
-    setLocation("/auth");
     return null;
   }
 

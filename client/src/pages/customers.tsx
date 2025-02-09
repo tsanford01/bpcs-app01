@@ -468,7 +468,7 @@ function CustomerDetails({
 
   const addContact = useMutation({
     mutationFn: async (data: { type: string; value: string }) => {
-      const res = await apiRequest("POST", "/api/customer-contacts", {
+      const res = await apiRequest("POST", `/api/customers/${customer.id}/contacts`, {
         ...data,
         customerId: customer.id,
         isPrimary: !customer.contacts?.length, // Make it primary if it's the first contact
