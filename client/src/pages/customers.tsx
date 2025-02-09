@@ -534,8 +534,16 @@ function CustomerOnboardingWizard({
   const isFirstStep = step === 0;
 
   const next = async () => {
-    const fields = steps[step].fields;
-    const result = await form.trigger(fields as any);
+    const fields = steps[step].fields.map(field => {
+      // Handle nested fields (e.g., "contact.type" -> ["contact", "type"])
+      const parts = field.split('.');
+      if (parts.length > 1) {
+        return field; // Keep the full path for nested fields
+      }
+      return field as keyof z.infer<typeof newCustomerFormSchema>;
+    });
+
+    const result = await form.trigger(fields);
     if (result) {
       if (isLastStep) {
         form.handleSubmit((data) => createCustomer.mutate(data))();
