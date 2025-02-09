@@ -15,12 +15,11 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
 import { Calendar as CalendarIcon, MapPin } from "lucide-react";
-import { Appointment, CustomerWithRelations } from "@shared/schema"; // Assuming this type is defined elsewhere
+import { Appointment, CustomerWithRelations } from "@shared/schema";
 
 // Fix Leaflet marker icon issues
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 
-// Import marker icons directly
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
@@ -31,8 +30,29 @@ L.Icon.Default.mergeOptions({
   shadowUrl: markerShadow,
 });
 
+// Simple geocoding function (this would ideally use a proper geocoding service)
+async function geocodeAddress(address: string): Promise<{ lat: number; lng: number } | null> {
+  try {
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`
+    );
+    const data = await response.json();
+    if (data && data[0]) {
+      return {
+        lat: parseFloat(data[0].lat),
+        lng: parseFloat(data[0].lon)
+      };
+    }
+    return null;
+  } catch (error) {
+    console.error("Geocoding error:", error);
+    return null;
+  }
+}
+
 export default function Routes() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [locations, setLocations] = useState<Map<string, { lat: number; lng: number }>>(new Map());
 
   const { data: appointments = [] } = useQuery<Appointment[]>({
     queryKey: ["/api/appointments"],
@@ -50,6 +70,52 @@ export default function Routes() {
       aptDate.getFullYear() === selectedDate.getFullYear()
     );
   }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+  // Geocode addresses when appointments or customers change
+  useEffect(() => {
+    const geocodeAddresses = async () => {
+      const newLocations = new Map<string, { lat: number; lng: number }>();
+
+      for (const apt of dayAppointments) {
+        const customer = customers.find((c) => c.id === apt.customerId);
+        const primaryAddress = customer?.addresses?.find(addr => addr.isPrimary) || customer?.addresses?.[0];
+
+        if (primaryAddress) {
+          const addressString = `${primaryAddress.address}, ${primaryAddress.city}, ${primaryAddress.state} ${primaryAddress.zipCode}`;
+          if (!locations.has(addressString)) {
+            const coords = await geocodeAddress(addressString);
+            if (coords) {
+              newLocations.set(addressString, coords);
+            }
+          } else {
+            newLocations.set(addressString, locations.get(addressString)!);
+          }
+        }
+      }
+
+      setLocations(newLocations);
+    };
+
+    geocodeAddresses();
+  }, [dayAppointments, customers]);
+
+  // Calculate map center based on all locations
+  const getMapCenter = () => {
+    if (locations.size === 0) {
+      return [40.3484, -111.7786] as L.LatLngExpression; // Default center
+    }
+
+    const coords = Array.from(locations.values());
+    const center = coords.reduce(
+      (acc, curr) => ({
+        lat: acc.lat + curr.lat / coords.length,
+        lng: acc.lng + curr.lng / coords.length,
+      }),
+      { lat: 0, lng: 0 }
+    );
+
+    return [center.lat, center.lng] as L.LatLngExpression;
+  };
 
   return (
     <div className="space-y-6">
@@ -116,7 +182,7 @@ export default function Routes() {
           <CardContent>
             <div className="h-[600px] rounded-lg overflow-hidden">
               <MapContainer
-                center={[40.3484, -111.7786] as L.LatLngExpression}
+                center={getMapCenter()}
                 zoom={11}
                 style={{ height: "100%", width: "100%" }}
                 scrollWheelZoom={false}
@@ -128,8 +194,13 @@ export default function Routes() {
                 {dayAppointments.map((apt) => {
                   const customer = customers.find((c) => c.id === apt.customerId);
                   const primaryAddress = customer?.addresses?.find(addr => addr.isPrimary) || customer?.addresses?.[0];
-                  if (!apt.location) return null;
-                  const location = apt.location as { lat: number; lng: number };
+
+                  if (!primaryAddress) return null;
+
+                  const addressString = `${primaryAddress.address}, ${primaryAddress.city}, ${primaryAddress.state} ${primaryAddress.zipCode}`;
+                  const location = locations.get(addressString);
+
+                  if (!location) return null;
 
                   return (
                     <Marker 
@@ -142,11 +213,7 @@ export default function Routes() {
                           <p className="text-sm">
                             {format(new Date(apt.date), "h:mm a")}
                           </p>
-                          {primaryAddress && (
-                            <p className="text-sm">
-                              {`${primaryAddress.address}, ${primaryAddress.city}, ${primaryAddress.state} ${primaryAddress.zipCode}`}
-                            </p>
-                          )}
+                          <p className="text-sm">{addressString}</p>
                         </div>
                       </Popup>
                     </Marker>
