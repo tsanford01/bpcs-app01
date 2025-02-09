@@ -36,7 +36,7 @@ export const customers = pgTable("customers", {
 
 export const customerAddresses = pgTable("customer_addresses", {
   id: serial("id").primaryKey(),
-  customerId: integer("customer_id").notNull(),
+  customerId: integer("customer_id").notNull().references(() => customers.id),
   type: text("type").notNull(),
   address: text("address").notNull(),
   city: text("city").notNull(),
@@ -49,7 +49,7 @@ export const customerAddresses = pgTable("customer_addresses", {
 
 export const customerContacts = pgTable("customer_contacts", {
   id: serial("id").primaryKey(),
-  customerId: integer("customer_id").notNull(),
+  customerId: integer("customer_id").notNull().references(() => customers.id),
   type: text("type").notNull(),
   value: text("value").notNull(),
   isPrimary: boolean("is_primary").default(false),
@@ -58,7 +58,7 @@ export const customerContacts = pgTable("customer_contacts", {
 
 export const serviceHistory = pgTable("service_history", {
   id: serial("id").primaryKey(),
-  customerId: integer("customer_id").notNull(),
+  customerId: integer("customer_id").notNull().references(() => customers.id),
   date: timestamp("date").notNull(),
   serviceType: text("service_type").notNull(),
   findings: text("findings"),
@@ -66,12 +66,12 @@ export const serviceHistory = pgTable("service_history", {
   technician: text("technician"),
   cost: integer("cost").notNull(),
   paid: boolean("paid").default(false),
-  addressId: integer("address_id").notNull(),
+  addressId: integer("address_id").notNull().references(() => customerAddresses.id),
 });
 
 export const paymentMethods = pgTable("payment_methods", {
   id: serial("id").primaryKey(),
-  customerId: integer("customer_id").notNull(),
+  customerId: integer("customer_id").notNull().references(() => customers.id),
   type: text("type").notNull(),
   last4: text("last4").notNull(),
   expiryDate: text("expiry_date"),
@@ -82,7 +82,7 @@ export const paymentMethods = pgTable("payment_methods", {
 
 export const customerDocuments = pgTable("customer_documents", {
   id: serial("id").primaryKey(),
-  customerId: integer("customer_id").notNull(),
+  customerId: integer("customer_id").notNull().references(() => customers.id),
   type: text("type").notNull(),
   fileName: text("file_name").notNull(),
   fileUrl: text("file_url").notNull(),
@@ -115,20 +115,6 @@ export const messages = pgTable("messages", {
   content: text("content").notNull(),
   fromCustomer: boolean("from_customer").notNull(),
   timestamp: timestamp("timestamp").notNull(),
-});
-
-export const insertAppointmentSchema = createInsertSchema(appointments, {
-  date: z.string().transform((str) => new Date(str)),
-  location: z.object({
-    lat: z.number(),
-    lng: z.number()
-  }).nullable(),
-});
-
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
-  name: true,
 });
 
 export const insertCustomerSchema = createInsertSchema(customers, {
