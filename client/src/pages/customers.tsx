@@ -1312,3 +1312,287 @@ function NewCustomerDialog() {
     </Sheet>
   );
 }
+
+// Keep existing imports and component definitions...
+
+export default function Customers() {
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [selectedCustomer, setSelectedCustomer] = useState<CustomerWithRelations | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [page, setPage] = useState(1);
+  const [statusFilter, setStatusFilter] = useState<CustomerStatus | "all">("all");
+  const [servicePlanFilter, setServicePlanFilter] = useState<ServicePlan | "all">("all");
+  const [showNewCustomerDialog, setShowNewCustomerDialog] = useState(false);
+  const { toast } = useToast();
+
+  const { data: customers = [] } = useQuery<CustomerWithRelations[]>({
+    queryKey: ["/api/customers"],
+  });
+
+  const filteredCustomers = customers.filter((customer) => {
+    const matchesSearch = !searchQuery ||
+      customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      customer.email.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = statusFilter === "all" || customer.status === statusFilter;
+    const matchesServicePlan = servicePlanFilter === "all" || customer.servicePlan === servicePlanFilter;
+    return matchesSearch && matchesStatus && matchesServicePlan;
+  });
+
+  const paginatedCustomers = filteredCustomers.slice(
+    (page - 1) * CUSTOMERS_PER_PAGE,
+    page * CUSTOMERS_PER_PAGE
+  );
+
+  const totalPages = Math.ceil(filteredCustomers.length / CUSTOMERS_PER_PAGE);
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Customers</h1>
+        <p className="text-muted-foreground">
+          Manage your customer relationships
+        </p>
+      </div>
+
+      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+        <div className="flex flex-1 items-center gap-2 max-w-sm">
+          <div className="relative flex-1">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search customers..."
+              className="pl-8"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon">
+                <Filter className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-[200px]">
+              <div className="p-2 space-y-4">
+                <div>
+                  <label className="text-sm font-medium">Status</label>
+                  <Select
+                    value={statusFilter}
+                    onValueChange={(value) => setStatusFilter(value as CustomerStatus | "all")}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Statuses</SelectItem>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="inactive">Inactive</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="suspended">Suspended</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Service Plan</label>
+                  <Select
+                    value={servicePlanFilter}
+                    onValueChange={(value) => setServicePlanFilter(value as ServicePlan | "all")}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Plans</SelectItem>
+                      <SelectItem value="monthly">Monthly</SelectItem>
+                      <SelectItem value="quarterly">Quarterly</SelectItem>
+                      <SelectItem value="yearly">Yearly</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <div className="flex items-center border rounded-lg">
+            <Button
+              variant={viewMode === "grid" ? "secondary" : "ghost"}
+              size="sm"
+              className="rounded-r-none"
+              onClick={() => setViewMode("grid")}
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={viewMode === "table" ? "secondary" : "ghost"}
+              size="sm"
+              className="rounded-l-none"
+              onClick={() => setViewMode("table")}
+            >
+              <Table className="h-4 w-4" />
+            </Button>
+          </div>
+          <Button onClick={() => setShowNewCustomerDialog(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Customer
+          </Button>
+        </div>
+      </div>
+
+      {viewMode === "grid" ? (
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {paginatedCustomers.map((customer) => (
+            <Card
+              key={customer.id}
+              className="cursor-pointer transition-shadow hover:shadow-lg"
+              onClick={() => setSelectedCustomer(customer)}
+            >
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <span>{customer.name}</span>
+                  {customer.requiresAttention && (
+                    <AlertCircle className="h-4 w-4 text-yellow-500" />
+                  )}
+                </CardTitle>
+                <CardDescription>{customer.email}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Badge>{customer.status}</Badge>
+                    {customer.servicePlan && (
+                      <Badge variant="outline">{customer.servicePlan}</Badge>
+                    )}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    <div className="flex justify-between">
+                      <span>Total Spent:</span>
+                      <span>${customer.totalSpent}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Services:</span>
+                      <span>{customer.serviceCount}</span>
+                    </div>
+                    {customer.nextServiceDate && (
+                      <div className="flex justify-between">
+                        <span>Next Service:</span>
+                        <span>
+                          {new Date(customer.nextServiceDate).toLocaleDateString()}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  {customer.tags && customer.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {customer.tags.map((tag, i) => (
+                        <Badge key={i} variant="secondary">
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <Card>
+          <Table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Status</th>
+                <th>Service Plan</th>
+                <th>Total Spent</th>
+                <th>Services</th>
+                <th>Next Service</th>
+              </tr>
+            </thead>
+            <tbody>
+              {paginatedCustomers.map((customer) => (
+                <tr
+                  key={customer.id}
+                  className="cursor-pointer hover:bg-accent"
+                  onClick={() => setSelectedCustomer(customer)}
+                >
+                  <td>
+                    <div>
+                      <p className="font-medium">{customer.name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {customer.email}
+                      </p>
+                    </div>
+                  </td>
+                  <td>
+                    <Badge>{customer.status}</Badge>
+                  </td>
+                  <td>
+                    {customer.servicePlan ? (
+                      <Badge variant="outline">{customer.servicePlan}</Badge>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
+                  </td>
+                  <td>${customer.totalSpent}</td>
+                  <td>{customer.serviceCount}</td>
+                  <td>
+                    {customer.nextServiceDate ? (
+                      new Date(customer.nextServiceDate).toLocaleDateString()
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        </Card>
+      )}
+
+      {totalPages > 1 && (
+        <div className="flex justify-center">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+            >
+              Previous
+            </Button>
+            <span className="text-sm text-muted-foreground">
+              Page {page} of {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {selectedCustomer && (
+        <CustomerDetails
+          customer={selectedCustomer}
+          onClose={() => setSelectedCustomer(null)}
+          onUpdate={(updated) => {
+            // Update the selected customer with fresh data
+            setSelectedCustomer(updated);
+          }}
+        />
+      )}
+
+      {showNewCustomerDialog && (
+        <NewCustomerDialog
+          open={showNewCustomerDialog}
+          onOpenChange={setShowNewCustomerDialog}
+        />
+      )}
+    </div>
+  );
+}
