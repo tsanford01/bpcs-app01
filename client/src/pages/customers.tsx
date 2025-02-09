@@ -119,13 +119,23 @@ function CustomerDetails({ customer, onClose, onUpdate }: CustomerDetailsProps) 
     }),
     value: z.string()
       .min(1, "Contact value is required")
-      .refine((val) => {
-        if (addContactForm.watch("type") === "email") {
-          return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
+      .superRefine((val, ctx) => {
+        if (ctx.parent.type === "email") {
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "Please enter a valid email address",
+            });
+          }
+        } else if (ctx.parent.type === "phone") {
+          // Allow formats like: (123) 456-7890, 123-456-7890, 1234567890
+          if (!/^\+?[\d\s-()]{10,}$/.test(val.replace(/\D/g, ''))) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "Please enter a valid phone number (at least 10 digits)",
+            });
+          }
         }
-        return /^\+?[\d\s-()]+$/.test(val);
-      }, {
-        message: "Please enter a valid email address or phone number",
       }),
   });
 
@@ -491,12 +501,18 @@ function CustomerDetails({ customer, onClose, onUpdate }: CustomerDetailsProps) 
                         name="value"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Contact Value</FormLabel>
+                            <FormLabel>
+                              {addContactForm.watch("type") === "email" ? "Email Address" : "Phone Number"}
+                            </FormLabel>
                             <FormControl>
                               <Input
                                 {...field}
                                 type={addContactForm.watch("type") === "email" ? "email" : "tel"}
-                                placeholder={addContactForm.watch("type") === "email" ? "Email address" : "Phone number"}
+                                placeholder={
+                                  addContactForm.watch("type") === "email"
+                                    ? "Enter email address"
+                                    : "Enter phone number (e.g. 123-456-7890)"
+                                }
                               />
                             </FormControl>
                             <FormMessage />
