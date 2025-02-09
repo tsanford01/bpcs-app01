@@ -15,7 +15,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
 import { Calendar as CalendarIcon, MapPin } from "lucide-react";
-import { Appointment, Customer } from "@shared/schema";
+import { Appointment, CustomerWithRelations } from "@shared/schema"; // Assuming this type is defined elsewhere
 
 // Fix Leaflet marker icon issues
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -38,7 +38,7 @@ export default function Routes() {
     queryKey: ["/api/appointments"],
   });
 
-  const { data: customers = [] } = useQuery<Customer[]>({
+  const { data: customers = [] } = useQuery<CustomerWithRelations[]>({
     queryKey: ["/api/customers"],
   });
 
@@ -81,6 +81,8 @@ export default function Routes() {
               ) : (
                 dayAppointments.map((apt) => {
                   const customer = customers.find((c) => c.id === apt.customerId);
+                  const primaryAddress = customer?.addresses?.find(addr => addr.isPrimary) || customer?.addresses?.[0];
+
                   return (
                     <div
                       key={apt.id}
@@ -90,10 +92,12 @@ export default function Routes() {
                       <p className="text-sm text-muted-foreground">
                         {format(new Date(apt.date), "h:mm a")}
                       </p>
-                      <p className="text-sm flex items-center mt-1">
-                        <MapPin className="h-4 w-4 mr-1" />
-                        {customer?.address}
-                      </p>
+                      {primaryAddress && (
+                        <p className="text-sm flex items-center mt-1">
+                          <MapPin className="h-4 w-4 mr-1" />
+                          {`${primaryAddress.address}, ${primaryAddress.city}, ${primaryAddress.state} ${primaryAddress.zipCode}`}
+                        </p>
+                      )}
                     </div>
                   );
                 })
@@ -112,7 +116,7 @@ export default function Routes() {
           <CardContent>
             <div className="h-[600px] rounded-lg overflow-hidden">
               <MapContainer
-                center={[40.3484, -111.7786] as L.LatLngExpression} // Utah County coordinates
+                center={[40.3484, -111.7786] as L.LatLngExpression}
                 zoom={11}
                 style={{ height: "100%", width: "100%" }}
                 scrollWheelZoom={false}
@@ -123,6 +127,7 @@ export default function Routes() {
                 />
                 {dayAppointments.map((apt) => {
                   const customer = customers.find((c) => c.id === apt.customerId);
+                  const primaryAddress = customer?.addresses?.find(addr => addr.isPrimary) || customer?.addresses?.[0];
                   if (!apt.location) return null;
                   const location = apt.location as { lat: number; lng: number };
 
@@ -137,7 +142,11 @@ export default function Routes() {
                           <p className="text-sm">
                             {format(new Date(apt.date), "h:mm a")}
                           </p>
-                          <p className="text-sm">{customer?.address}</p>
+                          {primaryAddress && (
+                            <p className="text-sm">
+                              {`${primaryAddress.address}, ${primaryAddress.city}, ${primaryAddress.state} ${primaryAddress.zipCode}`}
+                            </p>
+                          )}
                         </div>
                       </Popup>
                     </Marker>
