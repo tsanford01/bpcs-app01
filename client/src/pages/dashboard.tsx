@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { Link } from "wouter";
 import { Appointment, Customer, Message, Review } from "@shared/schema";
+import { Button } from "@/components/ui/button";
 
 export default function Dashboard() {
   const { data: appointments = [] } = useQuery<Appointment[]>({
@@ -63,9 +64,9 @@ export default function Dashboard() {
           <CardContent>
             <div className="text-2xl font-bold">{todayAppointments.length}</div>
             <Link href="/appointments">
-              <a className="text-xs text-muted-foreground hover:underline">
+              <Button variant="link" className="h-auto p-0 text-xs text-muted-foreground hover:text-primary">
                 View schedule
-              </a>
+              </Button>
             </Link>
           </CardContent>
         </Card>
@@ -78,9 +79,9 @@ export default function Dashboard() {
           <CardContent>
             <div className="text-2xl font-bold">{customers.length}</div>
             <Link href="/customers">
-              <a className="text-xs text-muted-foreground hover:underline">
+              <Button variant="link" className="h-auto p-0 text-xs text-muted-foreground hover:text-primary">
                 View all customers
-              </a>
+              </Button>
             </Link>
           </CardContent>
         </Card>
@@ -93,9 +94,9 @@ export default function Dashboard() {
           <CardContent>
             <div className="text-2xl font-bold">{pendingReviews}</div>
             <Link href="/reviews">
-              <a className="text-xs text-muted-foreground hover:underline">
+              <Button variant="link" className="h-auto p-0 text-xs text-muted-foreground hover:text-primary">
                 Manage reviews
-              </a>
+              </Button>
             </Link>
           </CardContent>
         </Card>
