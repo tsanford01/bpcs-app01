@@ -646,84 +646,9 @@ export default function Customers() {
   const [isAddingCustomer, setIsAddingCustomer] = useState(false);
   const { toast } = useToast();
 
-  const form = useForm<z.infer<typeof newCustomerFormSchema>>({
-    resolver: zodResolver(newCustomerFormSchema),
-    defaultValues: {
-      name: "",
-      email: "",
-      notes: "",
-      birthday: undefined,
-      servicePlan: undefined,
-      preferredContactTime: undefined,
-      communicationFrequency: undefined,
-      tags: [],
-      serviceAddons: [],
-      contact: {
-        type: "phone",
-        value: "",
-      },
-      address: {
-        type: "service",
-        address: "",
-        city: "",
-        state: "",
-        zipCode: "",
-        specialInstructions: "",
-      },
-    },
-  });
 
   const { data: customers = [] } = useQuery<CustomerWithRelations[]>({
     queryKey: ["/api/customers"],
-  });
-
-  const createCustomer = useMutation({
-    mutationFn: async (data: z.infer<typeof newCustomerFormSchema>) => {
-      const res = await apiRequest("POST", "/api/customers", data);
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Failed to create customer");
-      }
-      return res.json();
-    },
-    onSuccess: () => {
-      setIsAddingCustomer(false);
-      form.reset();
-      queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
-      toast({
-        title: "Success",
-        description: "Customer created successfully",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const filteredCustomers = customers.filter((customer) => {
-    if (
-      searchQuery &&
-      !customer.name.toLowerCase().includes(searchQuery.toLowerCase())
-    ) {
-      return false;
-    }
-
-    if (statusFilter !== "all" && customer.status !== statusFilter) {
-      return false;
-    }
-
-    if (
-      servicePlanFilter !== "all" &&
-      customer.servicePlan !== servicePlanFilter
-    ) {
-      return false;
-    }
-
-    return true;
   });
 
   return (
