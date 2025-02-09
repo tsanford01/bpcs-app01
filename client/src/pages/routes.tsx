@@ -30,23 +30,36 @@ L.Icon.Default.mergeOptions({
   shadowUrl: markerShadow,
 });
 
-// Simple geocoding function
+// Delay helper function
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Simple geocoding function with rate limiting
 async function geocodeAddress(address: string): Promise<{ lat: number; lng: number } | null> {
   try {
+    // Add a small delay to prevent rate limiting
+    await delay(1000);
+
     const response = await fetch(
       `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`
     );
+
+    if (!response.ok) {
+      throw new Error(`Geocoding failed with status: ${response.status}`);
+    }
+
     const data = await response.json();
     if (data && data[0]) {
-      return {
+      const coords = {
         lat: parseFloat(data[0].lat),
         lng: parseFloat(data[0].lon)
       };
+      console.log(`Successfully geocoded ${address}:`, coords);
+      return coords;
     }
     console.log(`No results found for address: ${address}`);
     return null;
   } catch (error) {
-    console.error("Geocoding error:", error);
+    console.error(`Error geocoding address: ${address}`, error);
     return null;
   }
 }
@@ -55,7 +68,7 @@ async function geocodeAddress(address: string): Promise<{ lat: number; lng: numb
 function MapRecenter({ center }: { center: L.LatLngExpression }) {
   const map = useMap();
   useEffect(() => {
-    map.setView(center);
+    map.setView(center, map.getZoom());
   }, [center, map]);
   return null;
 }
@@ -92,14 +105,22 @@ export default function Routes() {
 
         if (primaryAddress) {
           const addressString = `${primaryAddress.address}, ${primaryAddress.city}, ${primaryAddress.state} ${primaryAddress.zipCode}`;
+
+          // Check if we already have the coordinates
+          if (locations.has(addressString)) {
+            newLocations.set(addressString, locations.get(addressString)!);
+            continue;
+          }
+
+          // Geocode new address
           try {
             const coords = await geocodeAddress(addressString);
             if (coords) {
-              console.log(`Found coordinates for ${addressString}:`, coords);
               newLocations.set(addressString, coords);
+              console.log(`Added location for ${addressString}:`, coords);
             }
           } catch (error) {
-            console.error(`Error geocoding address ${addressString}:`, error);
+            console.error(`Failed to geocode ${addressString}:`, error);
           }
         }
       }
@@ -107,12 +128,14 @@ export default function Routes() {
       setLocations(newLocations);
     };
 
-    geocodeAddresses();
+    if (dayAppointments.length > 0 && customers.length > 0) {
+      geocodeAddresses();
+    }
   }, [dayAppointments, customers]);
 
   const getMapCenter = useCallback((): L.LatLngExpression => {
     if (locations.size === 0) {
-      return [40.3484, -111.7786]; // Default center
+      return [40.3484, -111.7786]; // Default center (Utah County)
     }
 
     const coords = Array.from(locations.values());
@@ -126,6 +149,8 @@ export default function Routes() {
 
     return [center.lat, center.lng];
   }, [locations]);
+
+  console.log('Current locations:', Array.from(locations.entries()));
 
   return (
     <div className="space-y-6">
@@ -142,14 +167,14 @@ export default function Routes() {
             <CardTitle>Schedule</CardTitle>
             <CardDescription>Select date to view appointments</CardDescription>
           </CardHeader>
-          <CardContent className="pb-4">
+          <CardContent>
             <Calendar
               mode="single"
               selected={selectedDate}
               onSelect={(date) => date && setSelectedDate(date)}
               className="border rounded-lg mb-4"
             />
-            <ScrollArea className="h-[400px] pr-4">
+            <ScrollArea className="h-[400px]">
               {dayAppointments.length === 0 ? (
                 <p className="text-muted-foreground text-center">
                   No appointments for this day
@@ -162,7 +187,7 @@ export default function Routes() {
                   return (
                     <div
                       key={apt.id}
-                      className="p-4 border rounded-lg mb-2 last:mb-0"
+                      className="p-4 border rounded-lg mb-2"
                     >
                       <p className="font-medium">{customer?.name}</p>
                       <p className="text-sm text-muted-foreground">
@@ -211,7 +236,12 @@ export default function Routes() {
                   const addressString = `${primaryAddress.address}, ${primaryAddress.city}, ${primaryAddress.state} ${primaryAddress.zipCode}`;
                   const location = locations.get(addressString);
 
-                  if (!location) return null;
+                  if (!location) {
+                    console.log(`No location found for address: ${addressString}`);
+                    return null;
+                  }
+
+                  console.log(`Rendering marker for ${addressString} at:`, location);
 
                   return (
                     <Marker 
