@@ -5,8 +5,11 @@ import { db } from "./db";
 import { eq } from "drizzle-orm";
 import {
   users, customers, appointments, reviews, messages,
+  customerAddresses, customerContacts, serviceHistory, paymentMethods, customerDocuments,
   type User, type Customer, type Appointment, type Review, type Message,
-  type InsertUser, type InsertCustomer, type InsertAppointment, type InsertReview, type InsertMessage
+  type CustomerAddress, type CustomerContact, type ServiceHistory, type PaymentMethod, type CustomerDocument,
+  type InsertUser, type InsertCustomer, type InsertAppointment, type InsertReview, type InsertMessage,
+  type InsertCustomerAddress, type InsertCustomerContact, type InsertServiceHistory, type InsertPaymentMethod, type InsertCustomerDocument
 } from "@shared/schema";
 import { Pool } from "@neondatabase/serverless";
 
@@ -179,6 +182,23 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
+  async updateCustomer(id: number, customer: Partial<Customer>): Promise<Customer> {
+    try {
+      console.time(`[DB] updateCustomer(${id})`);
+      const [updated] = await db
+        .update(customers)
+        .set(customer)
+        .where(eq(customers.id, id))
+        .returning();
+      if (!updated) throw new Error("Customer not found");
+      console.timeEnd(`[DB] updateCustomer(${id})`);
+      return updated;
+    } catch (error) {
+      console.error('[DB] Error in updateCustomer:', error);
+      throw new Error('Failed to update customer');
+    }
+  }
+
   async getAppointment(id: number): Promise<Appointment | undefined> {
     try {
       console.time(`[DB] getAppointment(${id})`);
@@ -320,7 +340,262 @@ export class DatabaseStorage implements IStorage {
       throw new Error('Failed to create message');
     }
   }
+
+
+  // Customer Address methods
+  async getCustomerAddresses(customerId: number): Promise<CustomerAddress[]> {
+    try {
+      console.time(`[DB] getCustomerAddresses(${customerId})`);
+      const addresses = await db
+        .select()
+        .from(customerAddresses)
+        .where(eq(customerAddresses.customerId, customerId));
+      console.timeEnd(`[DB] getCustomerAddresses(${customerId})`);
+      return addresses;
+    } catch (error) {
+      console.error('[DB] Error in getCustomerAddresses:', error);
+      throw new Error('Failed to fetch customer addresses');
+    }
+  }
+
+  async createCustomerAddress(address: InsertCustomerAddress): Promise<CustomerAddress> {
+    try {
+      console.time('[DB] createCustomerAddress');
+      const [newAddress] = await db.insert(customerAddresses).values(address).returning();
+      console.timeEnd('[DB] createCustomerAddress');
+      return newAddress;
+    } catch (error) {
+      console.error('[DB] Error in createCustomerAddress:', error);
+      throw new Error('Failed to create customer address');
+    }
+  }
+
+  async updateCustomerAddress(id: number, address: Partial<CustomerAddress>): Promise<CustomerAddress> {
+    try {
+      console.time(`[DB] updateCustomerAddress(${id})`);
+      const [updated] = await db
+        .update(customerAddresses)
+        .set(address)
+        .where(eq(customerAddresses.id, id))
+        .returning();
+      if (!updated) throw new Error("Address not found");
+      console.timeEnd(`[DB] updateCustomerAddress(${id})`);
+      return updated;
+    } catch (error) {
+      console.error('[DB] Error in updateCustomerAddress:', error);
+      throw new Error('Failed to update customer address');
+    }
+  }
+
+  async deleteCustomerAddress(id: number): Promise<void> {
+    try {
+      console.time(`[DB] deleteCustomerAddress(${id})`);
+      await db.delete(customerAddresses).where(eq(customerAddresses.id, id));
+      console.timeEnd(`[DB] deleteCustomerAddress(${id})`);
+    } catch (error) {
+      console.error('[DB] Error in deleteCustomerAddress:', error);
+      throw new Error('Failed to delete customer address');
+    }
+  }
+
+  // Customer Contact methods
+  async getCustomerContacts(customerId: number): Promise<CustomerContact[]> {
+    try {
+      console.time(`[DB] getCustomerContacts(${customerId})`);
+      const contacts = await db
+        .select()
+        .from(customerContacts)
+        .where(eq(customerContacts.customerId, customerId));
+      console.timeEnd(`[DB] getCustomerContacts(${customerId})`);
+      return contacts;
+    } catch (error) {
+      console.error('[DB] Error in getCustomerContacts:', error);
+      throw new Error('Failed to fetch customer contacts');
+    }
+  }
+
+  async createCustomerContact(contact: InsertCustomerContact): Promise<CustomerContact> {
+    try {
+      console.time('[DB] createCustomerContact');
+      const [newContact] = await db.insert(customerContacts).values(contact).returning();
+      console.timeEnd('[DB] createCustomerContact');
+      return newContact;
+    } catch (error) {
+      console.error('[DB] Error in createCustomerContact:', error);
+      throw new Error('Failed to create customer contact');
+    }
+  }
+
+  async updateCustomerContact(id: number, contact: Partial<CustomerContact>): Promise<CustomerContact> {
+    try {
+      console.time(`[DB] updateCustomerContact(${id})`);
+      const [updated] = await db
+        .update(customerContacts)
+        .set(contact)
+        .where(eq(customerContacts.id, id))
+        .returning();
+      if (!updated) throw new Error("Contact not found");
+      console.timeEnd(`[DB] updateCustomerContact(${id})`);
+      return updated;
+    } catch (error) {
+      console.error('[DB] Error in updateCustomerContact:', error);
+      throw new Error('Failed to update customer contact');
+    }
+  }
+
+  async deleteCustomerContact(id: number): Promise<void> {
+    try {
+      console.time(`[DB] deleteCustomerContact(${id})`);
+      await db.delete(customerContacts).where(eq(customerContacts.id, id));
+      console.timeEnd(`[DB] deleteCustomerContact(${id})`);
+    } catch (error) {
+      console.error('[DB] Error in deleteCustomerContact:', error);
+      throw new Error('Failed to delete customer contact');
+    }
+  }
+
+  // Service History methods
+  async getServiceHistory(customerId: number): Promise<ServiceHistory[]> {
+    try {
+      console.time(`[DB] getServiceHistory(${customerId})`);
+      const history = await db
+        .select()
+        .from(serviceHistory)
+        .where(eq(serviceHistory.customerId, customerId));
+      console.timeEnd(`[DB] getServiceHistory(${customerId})`);
+      return history;
+    } catch (error) {
+      console.error('[DB] Error in getServiceHistory:', error);
+      throw new Error('Failed to fetch service history');
+    }
+  }
+
+  async createServiceHistory(history: InsertServiceHistory): Promise<ServiceHistory> {
+    try {
+      console.time('[DB] createServiceHistory');
+      const [newHistory] = await db.insert(serviceHistory).values(history).returning();
+      console.timeEnd('[DB] createServiceHistory');
+      return newHistory;
+    } catch (error) {
+      console.error('[DB] Error in createServiceHistory:', error);
+      throw new Error('Failed to create service history');
+    }
+  }
+
+  async updateServiceHistory(id: number, history: Partial<ServiceHistory>): Promise<ServiceHistory> {
+    try {
+      console.time(`[DB] updateServiceHistory(${id})`);
+      const [updated] = await db
+        .update(serviceHistory)
+        .set(history)
+        .where(eq(serviceHistory.id, id))
+        .returning();
+      if (!updated) throw new Error("Service history not found");
+      console.timeEnd(`[DB] updateServiceHistory(${id})`);
+      return updated;
+    } catch (error) {
+      console.error('[DB] Error in updateServiceHistory:', error);
+      throw new Error('Failed to update service history');
+    }
+  }
+
+  // Payment Method methods
+  async getPaymentMethods(customerId: number): Promise<PaymentMethod[]> {
+    try {
+      console.time(`[DB] getPaymentMethods(${customerId})`);
+      const methods = await db
+        .select()
+        .from(paymentMethods)
+        .where(eq(paymentMethods.customerId, customerId));
+      console.timeEnd(`[DB] getPaymentMethods(${customerId})`);
+      return methods;
+    } catch (error) {
+      console.error('[DB] Error in getPaymentMethods:', error);
+      throw new Error('Failed to fetch payment methods');
+    }
+  }
+
+  async createPaymentMethod(payment: InsertPaymentMethod): Promise<PaymentMethod> {
+    try {
+      console.time('[DB] createPaymentMethod');
+      const [newMethod] = await db.insert(paymentMethods).values(payment).returning();
+      console.timeEnd('[DB] createPaymentMethod');
+      return newMethod;
+    } catch (error) {
+      console.error('[DB] Error in createPaymentMethod:', error);
+      throw new Error('Failed to create payment method');
+    }
+  }
+
+  async updatePaymentMethod(id: number, payment: Partial<PaymentMethod>): Promise<PaymentMethod> {
+    try {
+      console.time(`[DB] updatePaymentMethod(${id})`);
+      const [updated] = await db
+        .update(paymentMethods)
+        .set(payment)
+        .where(eq(paymentMethods.id, id))
+        .returning();
+      if (!updated) throw new Error("Payment method not found");
+      console.timeEnd(`[DB] updatePaymentMethod(${id})`);
+      return updated;
+    } catch (error) {
+      console.error('[DB] Error in updatePaymentMethod:', error);
+      throw new Error('Failed to update payment method');
+    }
+  }
+
+  async deletePaymentMethod(id: number): Promise<void> {
+    try {
+      console.time(`[DB] deletePaymentMethod(${id})`);
+      await db.delete(paymentMethods).where(eq(paymentMethods.id, id));
+      console.timeEnd(`[DB] deletePaymentMethod(${id})`);
+    } catch (error) {
+      console.error('[DB] Error in deletePaymentMethod:', error);
+      throw new Error('Failed to delete payment method');
+    }
+  }
+
+  // Customer Document methods
+  async getCustomerDocuments(customerId: number): Promise<CustomerDocument[]> {
+    try {
+      console.time(`[DB] getCustomerDocuments(${customerId})`);
+      const documents = await db
+        .select()
+        .from(customerDocuments)
+        .where(eq(customerDocuments.customerId, customerId));
+      console.timeEnd(`[DB] getCustomerDocuments(${customerId})`);
+      return documents;
+    } catch (error) {
+      console.error('[DB] Error in getCustomerDocuments:', error);
+      throw new Error('Failed to fetch customer documents');
+    }
+  }
+
+  async createCustomerDocument(document: InsertCustomerDocument): Promise<CustomerDocument> {
+    try {
+      console.time('[DB] createCustomerDocument');
+      const [newDocument] = await db.insert(customerDocuments).values(document).returning();
+      console.timeEnd('[DB] createCustomerDocument');
+      return newDocument;
+    } catch (error) {
+      console.error('[DB] Error in createCustomerDocument:', error);
+      throw new Error('Failed to create customer document');
+    }
+  }
+
+  async deleteCustomerDocument(id: number): Promise<void> {
+    try {
+      console.time(`[DB] deleteCustomerDocument(${id})`);
+      await db.delete(customerDocuments).where(eq(customerDocuments.id, id));
+      console.timeEnd(`[DB] deleteCustomerDocument(${id})`);
+    } catch (error) {
+      console.error('[DB] Error in deleteCustomerDocument:', error);
+      throw new Error('Failed to delete customer document');
+    }
+  }
 }
+
+export const storage = new DatabaseStorage();
 
 // Simplified monitoring interval
 const sessionMonitoringInterval = setInterval(() => {
@@ -339,5 +614,3 @@ process.on('exit', async () => {
     console.error('[Session] Error closing pool:', err);
   }
 });
-
-export const storage = new DatabaseStorage();

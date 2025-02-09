@@ -1,0 +1,37 @@
+Multiple Addresses & Contact Methods
+
+Many customers may have separate billing and service addresses, or multiple properties. Consider capturing an unlimited number of addresses.
+Let customers list multiple phone numbers (work, cell, etc.).
+Service History & Schedules
+
+Keep track of each visit or appointment (past and future).
+Show what services were performed on each visit (e.g., “Exterior Spray,” “Rodent Inspection,” etc.) and any findings or notes (e.g., “Termite damage found in backyard shed”).
+Next scheduled appointment date/time.
+Billing & Payment Details
+
+Add an area for invoices, payment history, and outstanding balances.
+Integrate or link to your payment processor (if you have one), so you can see if a customer is on autopay or has a saved card on file.
+Contracts or Service Plans
+
+Pest control companies often have recurring service plans (monthly, quarterly, yearly). Ensure there’s a field to capture contract start/end dates, plan tier, or add‐on services.
+Store and track contract documents or agreements in their profile if needed.
+Internal Notes/Tags
+
+Provide a text area for internal notes visible only to staff (e.g., “Watch out for large dog,” “Prefers phone calls to emails,” etc.).
+Add tags or labels (e.g., “Commercial Account,” “High‐Priority,” “Termite Warranty”) to quickly categorize customers.
+Communication Preferences
+
+Let customers (and staff) specify whether they prefer calls, texts, or emails.
+A quick toggle or dropdown for “Preferred Contact Method” avoids unnecessary phone calls or spammy emails.
+Customer Status
+
+Instead of just “active,” you might track more nuanced statuses: “Lead,” “Active,” “Suspended,” “Pending Payment,” “Former Customer,” etc.
+This is helpful for marketing and reactivation campaigns.
+Automated Notifications and Reminders
+
+Use the system to remind customers of upcoming appointments, overdue payments, or recommended service intervals.
+Provide a field to store the last time a reminder was sent.
+Attach Documents or Photos
+
+Allow staff to attach images (e.g., a photo of the pest infestation, contract docs, receipts).
+Provide a quick “Documents” or “Photos” tab so that all relevant materials are stored in one place.
