@@ -144,7 +144,17 @@ export const insertCustomerSchema = createInsertSchema(customers, {
   communicationFrequency: z.enum(["weekly", "monthly", "quarterly"]).optional(),
 });
 
-export const insertCustomerAddressSchema = createInsertSchema(customerAddresses);
+export const insertCustomerAddressSchema = createInsertSchema(customerAddresses, {
+  type: z.enum(["service", "billing", "mailing"]),
+  address: z.string().min(5, "Address must be at least 5 characters"),
+  city: z.string().min(2, "City must be at least 2 characters"),
+  state: z.string().length(2, "State must be a 2-letter code"),
+  zipCode: z.string().regex(/^\d{5}(-\d{4})?$/, "Invalid ZIP code format (e.g. 12345 or 12345-6789)"),
+  country: z.string().length(2, "Country must be a 2-letter code").default("US"),
+  isPrimary: z.boolean().default(false),
+  specialInstructions: z.string().optional(),
+});
+
 export const insertCustomerContactSchema = createInsertSchema(customerContacts);
 export const insertServiceHistorySchema = createInsertSchema(serviceHistory);
 export const insertPaymentMethodSchema = createInsertSchema(paymentMethods);
