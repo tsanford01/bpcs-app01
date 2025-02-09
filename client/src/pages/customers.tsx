@@ -27,6 +27,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -46,6 +47,7 @@ import {
   AlertCircle,
   Filter,
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -434,6 +436,178 @@ function CustomerDetails({
   customer: CustomerWithRelations;
   onClose: () => void;
 }) {
+  const [isAddingContact, setIsAddingContact] = useState(false);
+  const [isAddingAddress, setIsAddingAddress] = useState(false);
+  const [isAddingPayment, setIsAddingPayment] = useState(false);
+  const { toast } = useToast();
+
+  const addContactForm = useForm<{
+    type: "phone" | "email";
+    value: string;
+  }>({
+    resolver: zodResolver(
+      z.object({
+        type: z.enum(["phone", "email"]),
+        value: z.string().min(1, "Contact value is required"),
+      })
+    ),
+    defaultValues: {
+      type: "phone",
+      value: "",
+    },
+  });
+
+  const addContact = useMutation({
+    mutationFn: async (data: { type: string; value: string }) => {
+      const res = await apiRequest("POST", "/api/customer-contacts", {
+        ...data,
+        customerId: customer.id,
+        isPrimary: false,
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to add contact");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      setIsAddingContact(false);
+      addContactForm.reset();
+      queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
+      toast({
+        title: "Contact added",
+        description: "The contact has been added successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const addAddressForm = useForm<{
+    type: "service" | "billing";
+    address: string;
+    city: string;
+    state: string;
+    zipCode: string;
+    specialInstructions?: string;
+  }>({
+    resolver: zodResolver(
+      z.object({
+        type: z.enum(["service", "billing"]),
+        address: z.string().min(1, "Address is required"),
+        city: z.string().min(1, "City is required"),
+        state: z.string().min(1, "State is required"),
+        zipCode: z.string().min(5, "ZIP code must be at least 5 characters"),
+        specialInstructions: z.string().optional(),
+      })
+    ),
+    defaultValues: {
+      type: "service",
+      address: "",
+      city: "",
+      state: "",
+      zipCode: "",
+      specialInstructions: "",
+    },
+  });
+
+  const addAddress = useMutation({
+    mutationFn: async (data: {
+      type: string;
+      address: string;
+      city: string;
+      state: string;
+      zipCode: string;
+      specialInstructions?: string;
+    }) => {
+      const res = await apiRequest("POST", "/api/customer-addresses", {
+        ...data,
+        customerId: customer.id,
+        isPrimary: !customer.addresses?.length,
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to add address");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      setIsAddingAddress(false);
+      addAddressForm.reset();
+      queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
+      toast({
+        title: "Address added",
+        description: "The address has been added successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const addPaymentForm = useForm<{
+    type: string;
+    last4: string;
+    autopayEnabled: boolean;
+  }>({
+    resolver: zodResolver(
+      z.object({
+        type: z.enum(["credit_card", "bank_account", "other"]),
+        last4: z.string().length(4, "Must be last 4 digits"),
+        autopayEnabled: z.boolean(),
+      })
+    ),
+    defaultValues: {
+      type: "credit_card",
+      last4: "",
+      autopayEnabled: false,
+    },
+  });
+
+  const addPayment = useMutation({
+    mutationFn: async (data: {
+      type: string;
+      last4: string;
+      autopayEnabled: boolean;
+    }) => {
+      const res = await apiRequest("POST", "/api/payment-methods", {
+        ...data,
+        customerId: customer.id,
+        isPrimary: !customer.paymentMethods?.length,
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to add payment method");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      setIsAddingPayment(false);
+      addPaymentForm.reset();
+      queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
+      toast({
+        title: "Payment method added",
+        description: "The payment method has been added successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   return (
     <Sheet open onOpenChange={(open) => !open && onClose()}>
       <SheetContent className="w-[400px] sm:w-[540px] sm:max-w-[100vw]">
@@ -537,7 +711,11 @@ function CustomerDetails({
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <h4 className="text-sm font-medium">Contact Methods</h4>
-                  <Button variant="outline" size="sm">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsAddingContact(true)}
+                  >
                     <Plus className="w-4 h-4 mr-2" />
                     Add Contact
                   </Button>
@@ -567,13 +745,86 @@ function CustomerDetails({
                   ))}
                 </div>
               </div>
+
+              <Sheet open={isAddingContact} onOpenChange={setIsAddingContact}>
+                <SheetContent side="right" className="w-[400px]">
+                  <SheetHeader>
+                    <SheetTitle>Add New Contact</SheetTitle>
+                    <SheetDescription>
+                      Add a new contact method for {customer.name}
+                    </SheetDescription>
+                  </SheetHeader>
+
+                  <Form {...addContactForm}>
+                    <form
+                      onSubmit={addContactForm.handleSubmit((data) => addContact.mutate(data))}
+                      className="space-y-4 mt-4"
+                    >
+                      <FormField
+                        control={addContactForm.control}
+                        name="type"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Contact Type</FormLabel>
+                            <Select
+                              onValueChange={field.onChange}
+                              defaultValue={field.value}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select contact type" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="phone">Phone</SelectItem>
+                                <SelectItem value="email">Email</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={addContactForm.control}
+                        name="value"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Contact Value</FormLabel>
+                            <FormControl>
+                              <Input
+                                {...field}
+                                type={addContactForm.watch("type") === "email" ? "email" : "tel"}
+                                placeholder={addContactForm.watch("type") === "email" ? "Email address" : "Phone number"}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <Button
+                        type="submit"
+                        className="w-full"
+                        disabled={addContact.isPending}
+                      >
+                        {addContact.isPending ? "Adding..." : "Add Contact"}
+                      </Button>
+                    </form>
+                  </Form>
+                </SheetContent>
+              </Sheet>
             </TabsContent>
 
             <TabsContent value="addresses" className="space-y-6">
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <h4 className="text-sm font-medium">Addresses</h4>
-                  <Button variant="outline" size="sm">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsAddingAddress(true)}
+                  >
                     <Plus className="w-4 h-4 mr-2" />
                     Add Address
                   </Button>
@@ -604,13 +855,138 @@ function CustomerDetails({
                   ))}
                 </div>
               </div>
+
+              <Sheet open={isAddingAddress} onOpenChange={setIsAddingAddress}>
+                <SheetContent side="right" className="w-[400px]">
+                  <SheetHeader>
+                    <SheetTitle>Add New Address</SheetTitle>
+                    <SheetDescription>
+                      Add a new address for {customer.name}
+                    </SheetDescription>
+                  </SheetHeader>
+
+                  <Form {...addAddressForm}>
+                    <form
+                      onSubmit={addAddressForm.handleSubmit((data) => addAddress.mutate(data))}
+                      className="space-y-4 mt-4"
+                    >
+                      <FormField
+                        control={addAddressForm.control}
+                        name="type"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Address Type</FormLabel>
+                            <Select
+                              onValueChange={field.onChange}
+                              defaultValue={field.value}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select address type" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="service">Service</SelectItem>
+                                <SelectItem value="billing">Billing</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={addAddressForm.control}
+                        name="address"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Street Address</FormLabel>
+                            <FormControl>
+                              <Input {...field} placeholder="Enter street address" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={addAddressForm.control}
+                        name="city"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>City</FormLabel>
+                            <FormControl>
+                              <Input {...field} placeholder="Enter city" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={addAddressForm.control}
+                        name="state"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>State</FormLabel>
+                            <FormControl>
+                              <Input {...field} placeholder="Enter state" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={addAddressForm.control}
+                        name="zipCode"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>ZIP Code</FormLabel>
+                            <FormControl>
+                              <Input {...field} placeholder="Enter ZIP code" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={addAddressForm.control}
+                        name="specialInstructions"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Special Instructions (Optional)</FormLabel>
+                            <FormControl>
+                              <Input {...field} placeholder="Enter any special instructions" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <Button
+                        type="submit"
+                        className="w-full"
+                        disabled={addAddress.isPending}
+                      >
+                        {addAddress.isPending ? "Adding..." : "Add Address"}
+                      </Button>
+                    </form>
+                  </Form>
+                </SheetContent>
+              </Sheet>
             </TabsContent>
 
             <TabsContent value="payments" className="space-y-6">
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <h4 className="text-sm font-medium">Payment Methods</h4>
-                  <Button variant="outline" size="sm">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsAddingPayment(true)}
+                  >
                     <CreditCard className="w-4 h-4 mr-2" />
                     Add New
                   </Button>
@@ -640,6 +1016,99 @@ function CustomerDetails({
                     </Card>
                   ))}
                 </div>
+
+                <Sheet open={isAddingPayment} onOpenChange={setIsAddingPayment}>
+                  <SheetContent side="right" className="w-[400px]">
+                    <SheetHeader>
+                      <SheetTitle>Add Payment Method</SheetTitle>
+                      <SheetDescription>
+                        Add a new payment method for {customer.name}
+                      </SheetDescription>
+                    </SheetHeader>
+
+                    <Form {...addPaymentForm}>
+                      <form
+                        onSubmit={addPaymentForm.handleSubmit((data) => addPayment.mutate(data))}
+                        className="space-y-4 mt-4"
+                      >
+                        <FormField
+                          control={addPaymentForm.control}
+                          name="type"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Payment Type</FormLabel>
+                              <Select
+                                onValueChange={field.onChange}
+                                defaultValue={field.value}
+                              >
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select payment type" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="credit_card">Credit Card</SelectItem>
+                                  <SelectItem value="bank_account">Bank Account</SelectItem>
+                                  <SelectItem value="other">Other</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={addPaymentForm.control}
+                          name="last4"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Last 4 Digits</FormLabel>
+                              <FormControl>
+                                <Input
+                                  {...field}
+                                  placeholder="Enter last 4 digits"
+                                  maxLength={4}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={addPaymentForm.control}
+                          name="autopayEnabled"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                              <div className="space-y-0.5">
+                                <FormLabel className="text-base">
+                                  Enable Autopay
+                                </FormLabel>
+                                <FormDescription>
+                                  Automatically process payments for recurring services
+                                </FormDescription>
+                              </div>
+                              <FormControl>
+                                <Switch
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+
+                        <Button
+                          type="submit"
+                          className="w-full"
+                          disabled={addPayment.isPending}
+                        >
+                          {addPayment.isPending ? "Adding..." : "Add Payment Method"}
+                        </Button>
+                      </form>
+                    </Form>
+                  </SheetContent>
+                </Sheet>
               </div>
 
               <div className="space-y-4">
@@ -814,7 +1283,6 @@ function NewCustomerDialog() {
                 <TabsTrigger value="preferences">Preferences</TabsTrigger>
               </TabsList>
 
-              {/* Basic Info Tab */}
               <TabsContent value="basic" className="space-y-4">
                 <FormField
                   control={form.control}
@@ -867,7 +1335,6 @@ function NewCustomerDialog() {
                 />
               </TabsContent>
 
-              {/* Contact Tab */}
               <TabsContent value="contact" className="space-y-4">
                 <FormField
                   control={form.control}
@@ -912,7 +1379,6 @@ function NewCustomerDialog() {
                   )}
                 />
 
-                {/* Address Fields */}
                 <FormField
                   control={form.control}
                   name="address.type"
@@ -974,7 +1440,7 @@ function NewCustomerDialog() {
                       <FormItem>
                         <FormLabel>State</FormLabel>
                         <FormControl>
-                          <Input {...field}/>
+                          <Input {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -1011,7 +1477,6 @@ function NewCustomerDialog() {
                 />
               </TabsContent>
 
-              {/* Service Tab */}
               <TabsContent value="service" className="space-y-4">
                 <FormField
                   control={form.control}
@@ -1058,7 +1523,6 @@ function NewCustomerDialog() {
                 />
               </TabsContent>
 
-              {/* Preferences Tab */}
               <TabsContent value="preferences" className="space-y-4">
                 <FormField
                   control={form.control}
