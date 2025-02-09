@@ -471,7 +471,7 @@ function CustomerDetails({
       const res = await apiRequest("POST", `/api/customers/${customer.id}/contacts`, {
         ...data,
         customerId: customer.id,
-        isPrimary: !customer.contacts?.length, // Make it primary if it's the first contact
+        isPrimary: !customer.contacts?.length,
       });
       if (!res.ok) {
         const error = await res.json();
@@ -482,6 +482,7 @@ function CustomerDetails({
     onSuccess: () => {
       setIsAddingContact(false);
       addContactForm.reset();
+      // Invalidate both the customer list and the specific customer's data
       queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
       toast({
         title: "Contact added",
@@ -548,6 +549,7 @@ function CustomerDetails({
     onSuccess: () => {
       setIsAddingAddress(false);
       addAddressForm.reset();
+      // Invalidate both the customer list and the specific customer's data
       queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
       toast({
         title: "Address added",
@@ -602,6 +604,7 @@ function CustomerDetails({
     onSuccess: () => {
       setIsAddingPayment(false);
       addPaymentForm.reset();
+      // Invalidate both the customer list and the specific customer's data
       queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
       toast({
         title: "Payment method added",
@@ -967,7 +970,7 @@ function CustomerDetails({
                           <FormItem>
                             <FormLabel>Special Instructions (Optional)</FormLabel>
                             <FormControl>
-                              <Input {...field} placeholder="Enter any special instructions" />
+                              <Input {...field} placeholder="Enter anyspecial instructions" />
                             </FormControl>
                             <FormMessage />
                           </FormItem>

@@ -4,8 +4,24 @@ import { storage } from "./storage";
 import { setupAuth } from "./auth";
 import { WebSocketServer, WebSocket } from "ws";
 import { insertCustomerSchema, insertAppointmentSchema, insertReviewSchema, insertMessageSchema, insertCustomerContactSchema } from "@shared/schema";
-import {insertCustomerAddressSchema, insertPaymentMethodSchema} from "@shared/schema"; // Added import statements
+import {insertCustomerAddressSchema, insertPaymentMethodSchema} from "@shared/schema";
 
+// Standardized error response helper
+function sendError(res: Express.Response, status: number, message: string) {
+  res.status(status).json({ 
+    error: true,
+    message 
+  });
+}
+
+// Authentication middleware
+function requireAuth(req: Express.Request, res: Express.Response, next: Express.NextFunction) {
+  if (!req.isAuthenticated()) {
+    console.log('[API] Unauthorized access attempt');
+    return sendError(res, 401, 'Unauthorized');
+  }
+  next();
+}
 
 // Extend WebSocket type to include isAlive property
 interface ExtendedWebSocket extends WebSocket {
@@ -137,223 +153,166 @@ export function registerRoutes(app: Express): Server {
     clearInterval(interval);
   });
 
-  // REST API routes 
-  app.get("/api/customers", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      console.log('[API] Unauthorized access attempt to /api/customers');
-      return res.sendStatus(401);
-    }
+  // REST API routes with standardized patterns
+  app.get("/api/customers", requireAuth, async (req, res) => {
     try {
       const customers = await storage.listCustomers();
       res.json(customers);
     } catch (error) {
       console.error('[API] Error fetching customers:', error);
-      res.status(500).json({ message: 'Failed to fetch customers' });
+      sendError(res, 500, 'Failed to fetch customers');
     }
   });
 
-  app.post("/api/customers", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      console.log('[API] Unauthorized access attempt to POST /api/customers');
-      return res.sendStatus(401);
-    }
+  app.post("/api/customers", requireAuth, async (req, res) => {
     try {
       const parsed = insertCustomerSchema.safeParse(req.body);
       if (!parsed.success) {
-        return res.status(400).json(parsed.error);
+        return sendError(res, 400, parsed.error.message);
       }
       const customer = await storage.createCustomer(parsed.data);
       res.status(201).json(customer);
     } catch (error) {
       console.error('[API] Error creating customer:', error);
-      res.status(500).json({ message: 'Failed to create customer' });
+      sendError(res, 500, 'Failed to create customer');
     }
   });
 
-  app.get("/api/appointments", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      console.log('[API] Unauthorized access attempt to /api/appointments');
-      return res.sendStatus(401);
-    }
+  app.get("/api/appointments", requireAuth, async (req, res) => {
     try {
       const appointments = await storage.listAppointments();
       res.json(appointments);
     } catch (error) {
       console.error('[API] Error fetching appointments:', error);
-      res.status(500).json({ message: 'Failed to fetch appointments' });
+      sendError(res, 500, 'Failed to fetch appointments');
     }
   });
 
-  app.post("/api/appointments", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      console.log('[API] Unauthorized access attempt to POST /api/appointments');
-      return res.sendStatus(401);
-    }
+  app.post("/api/appointments", requireAuth, async (req, res) => {
     try {
       const parsed = insertAppointmentSchema.safeParse(req.body);
-      if (!parsed.success) return res.status(400).json(parsed.error);
+      if (!parsed.success) return sendError(res, 400, parsed.error.message);
       const appointment = await storage.createAppointment(parsed.data);
       res.status(201).json(appointment);
     } catch (error) {
       console.error('[API] Error creating appointment:', error);
-      res.status(500).json({ message: 'Failed to create appointment' });
+      sendError(res, 500, 'Failed to create appointment');
     }
   });
 
-  app.patch("/api/appointments/:id", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      console.log('[API] Unauthorized access attempt to PATCH /api/appointments');
-      return res.sendStatus(401);
-    }
+  app.patch("/api/appointments/:id", requireAuth, async (req, res) => {
     try {
       const appointment = await storage.updateAppointment(Number(req.params.id), req.body);
       res.json(appointment);
     } catch (error) {
       console.error('[API] Error updating appointment:', error);
-      res.status(500).json({ message: 'Failed to update appointment' });
+      sendError(res, 500, 'Failed to update appointment');
     }
   });
 
-  app.get("/api/reviews", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      console.log('[API] Unauthorized access attempt to /api/reviews');
-      return res.sendStatus(401);
-    }
+  app.get("/api/reviews", requireAuth, async (req, res) => {
     try {
       const reviews = await storage.listReviews();
       res.json(reviews);
     } catch (error) {
       console.error('[API] Error fetching reviews:', error);
-      res.status(500).json({ message: 'Failed to fetch reviews' });
+      sendError(res, 500, 'Failed to fetch reviews');
     }
   });
 
-  app.post("/api/reviews", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      console.log('[API] Unauthorized access attempt to POST /api/reviews');
-      return res.sendStatus(401);
-    }
+  app.post("/api/reviews", requireAuth, async (req, res) => {
     try {
       const parsed = insertReviewSchema.safeParse(req.body);
-      if (!parsed.success) return res.status(400).json(parsed.error);
+      if (!parsed.success) return sendError(res, 400, parsed.error.message);
       const review = await storage.createReview(parsed.data);
       res.status(201).json(review);
     } catch (error) {
       console.error('[API] Error creating review:', error);
-      res.status(500).json({ message: 'Failed to create review' });
+      sendError(res, 500, 'Failed to create review');
     }
   });
 
-  app.patch("/api/reviews/:id", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      console.log('[API] Unauthorized access attempt to PATCH /api/reviews');
-      return res.sendStatus(401);
-    }
+  app.patch("/api/reviews/:id", requireAuth, async (req, res) => {
     try {
       const review = await storage.updateReview(Number(req.params.id), req.body);
       res.json(review);
     } catch (error) {
       console.error('[API] Error updating review:', error);
-      res.status(500).json({ message: 'Failed to update review' });
+      sendError(res, 500, 'Failed to update review');
     }
   });
 
-  app.get("/api/messages/:customerId", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      console.log('[API] Unauthorized access attempt to /api/messages');
-      return res.sendStatus(401);
-    }
+  app.get("/api/messages/:customerId", requireAuth, async (req, res) => {
     try {
       const messages = await storage.listMessages(Number(req.params.customerId));
       res.json(messages);
     } catch (error) {
       console.error('[API] Error fetching messages:', error);
-      res.status(500).json({ message: 'Failed to fetch messages' });
+      sendError(res, 500, 'Failed to fetch messages');
     }
   });
 
-  app.post("/api/customers/:customerId/contacts", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      console.log('[API] Unauthorized access attempt to POST /api/customers/:customerId/contacts');
-      return res.sendStatus(401);
-    }
-
+  app.post("/api/customers/:customerId/contacts", requireAuth, async (req, res) => {
     try {
       const customerId = Number(req.params.customerId);
       const contact = { ...req.body, customerId };
 
       const parsed = insertCustomerContactSchema.safeParse(contact);
       if (!parsed.success) {
-        return res.status(400).json(parsed.error);
+        return sendError(res, 400, parsed.error.message);
       }
 
       const newContact = await storage.createCustomerContact(parsed.data);
       res.status(201).json(newContact);
     } catch (error) {
       console.error('[API] Error creating customer contact:', error);
-      res.status(500).json({ message: 'Failed to create customer contact' });
+      sendError(res, 500, 'Failed to create customer contact');
     }
   });
 
-  app.get("/api/customers/:customerId/contacts", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      console.log('[API] Unauthorized access attempt to GET /api/customers/:customerId/contacts');
-      return res.sendStatus(401);
-    }
-
+  app.get("/api/customers/:customerId/contacts", requireAuth, async (req, res) => {
     try {
       const contacts = await storage.getCustomerContacts(Number(req.params.customerId));
       res.json(contacts);
     } catch (error) {
       console.error('[API] Error fetching customer contacts:', error);
-      res.status(500).json({ message: 'Failed to fetch customer contacts' });
+      sendError(res, 500, 'Failed to fetch customer contacts');
     }
   });
 
-  // Add these routes after the existing customer contact routes
-  app.post("/api/customers/:customerId/addresses", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      console.log('[API] Unauthorized access attempt to POST /api/customers/:customerId/addresses');
-      return res.sendStatus(401);
-    }
-
+  app.post("/api/customers/:customerId/addresses", requireAuth, async (req, res) => {
     try {
       const customerId = Number(req.params.customerId);
       const address = { ...req.body, customerId };
 
       const parsed = insertCustomerAddressSchema.safeParse(address);
       if (!parsed.success) {
-        return res.status(400).json(parsed.error);
+        return sendError(res, 400, parsed.error.message);
       }
 
       const newAddress = await storage.createCustomerAddress(parsed.data);
       res.status(201).json(newAddress);
     } catch (error) {
       console.error('[API] Error creating customer address:', error);
-      res.status(500).json({ message: 'Failed to create customer address' });
+      sendError(res, 500, 'Failed to create customer address');
     }
   });
 
-  app.post("/api/customers/:customerId/payment-methods", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      console.log('[API] Unauthorized access attempt to POST /api/customers/:customerId/payment-methods');
-      return res.sendStatus(401);
-    }
-
+  app.post("/api/customers/:customerId/payment-methods", requireAuth, async (req, res) => {
     try {
       const customerId = Number(req.params.customerId);
       const paymentMethod = { ...req.body, customerId };
 
       const parsed = insertPaymentMethodSchema.safeParse(paymentMethod);
       if (!parsed.success) {
-        return res.status(400).json(parsed.error);
+        return sendError(res, 400, parsed.error.message);
       }
 
       const newPaymentMethod = await storage.createPaymentMethod(parsed.data);
       res.status(201).json(newPaymentMethod);
     } catch (error) {
       console.error('[API] Error creating payment method:', error);
-      res.status(500).json({ message: 'Failed to create payment method' });
+      sendError(res, 500, 'Failed to create payment method');
     }
   });
 
