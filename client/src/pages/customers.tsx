@@ -90,7 +90,6 @@ const newCustomerFormSchema = z.object({
     type: z.enum(["phone", "email"]),
     value: z.string().min(1, "Contact value is required").superRefine((val, ctx) => {
       if (ctx.path[ctx.path.length - 2] === "phone") {
-        // Validate format: (123) 456-7890 or 123-456-7890
         if (!/^\(\d{3}\)\s?\d{3}-\d{4}$|^\d{3}-\d{3}-\d{4}$/.test(val)) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
@@ -538,31 +537,34 @@ function CustomerOnboardingWizard({
   const next = async () => {
     const stepFields = steps[step].fields;
 
-    // Create an array of field paths that form.trigger can understand
-    const formFields = stepFields.map(field => {
-      if (field.includes('.')) {
-        // For nested fields like "contact.type", return as is
-        return field;
-      }
-      // For root level fields, cast to the correct type
-      return field as keyof z.infer<typeof newCustomerFormSchema>;
-    });
-
     try {
-      // Validate just the current step's fields
-      const result = await form.trigger(formFields as any[], { shouldFocus: true });
+      // Convert fields to proper paths for nested objects
+      const formFields = stepFields.map(field => {
+        if (typeof field === 'string') {
+          return field as keyof z.infer<typeof newCustomerFormSchema>;
+        }
+        return field;
+      });
+
+      // Validate current step's fields
+      const result = await form.trigger(formFields, { shouldFocus: true });
 
       if (result) {
-        if (isLastStep) {
-          // If it's the last step, submit the form
+        if (step === steps.length - 1) {
+          // Submit form if on last step
           form.handleSubmit((data) => createCustomer.mutate(data))();
         } else {
-          // If validation passed, move to next step
+          // Move to next step if validation passed
           setStep(s => s + 1);
         }
       }
     } catch (error) {
       console.error('Validation error:', error);
+      toast({
+        title: "Error",
+        description: "Please check all required fields",
+        variant: "destructive",
+      });
     }
   };
 
@@ -654,7 +656,7 @@ export default function Customers() {
 
   // Add filtering logic
   const filteredCustomers = customers.filter((customer) => {
-    const matchesSearch = !searchQuery || 
+    const matchesSearch = !searchQuery ||
       customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       customer.email.toLowerCase().includes(searchQuery.toLowerCase());
 
