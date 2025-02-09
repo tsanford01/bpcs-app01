@@ -1,5 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -154,6 +154,23 @@ function CustomerOnboardingWizard({
     },
   });
 
+  // Error boundary for catching render errors
+  useEffect(() => {
+    const handleError = (error: Error) => {
+      console.error('Form Error:', error);
+      toast({
+        title: "Error",
+        description: "An error occurred. Please try again.",
+        variant: "destructive",
+      });
+    };
+
+    window.addEventListener('error', (e) => handleError(e.error));
+    return () => {
+      window.removeEventListener('error', (e) => handleError(e.error));
+    };
+  }, [toast]);
+
   const createCustomer = useMutation({
     mutationFn: async (data: z.infer<typeof newCustomerFormSchema>) => {
       const res = await apiRequest("POST", "/api/customers", data);
@@ -180,6 +197,54 @@ function CustomerOnboardingWizard({
       });
     },
   });
+
+  const next = async () => {
+    try {
+      const stepFields = steps[step].fields;
+      console.log('Validating fields:', stepFields); // Debug log
+
+      // Validate current step's fields
+      const result = await form.trigger(stepFields as any);
+      console.log('Validation result:', result); // Debug log
+
+      if (result) {
+        if (isLastStep) {
+          const formData = form.getValues();
+          // Ensure arrays are properly initialized
+          formData.tags = formData.tags || [];
+          formData.serviceAddons = formData.serviceAddons || [];
+
+          createCustomer.mutate(formData);
+        } else {
+          setStep((prevStep) => {
+            console.log('Moving to step:', prevStep + 1); // Debug log
+            return prevStep + 1;
+          });
+        }
+      } else {
+        const errors = form.formState.errors;
+        console.log('Validation errors:', errors);
+        toast({
+          title: "Validation Error",
+          description: "Please check all required fields",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Step transition error:', error);
+      toast({
+        title: "Error",
+        description: "An error occurred while processing your request",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const prev = () => {
+    if (!isFirstStep) {
+      setStep(s => s - 1);
+    }
+  };
 
   const steps = [
     {
@@ -533,46 +598,6 @@ function CustomerOnboardingWizard({
   const currentStep = steps[step];
   const isLastStep = step === steps.length - 1;
   const isFirstStep = step === 0;
-
-  const next = async () => {
-    const stepFields = steps[step].fields;
-
-    try {
-      // Convert fields to proper paths for nested objects
-      const formFields = stepFields.map(field => {
-        if (typeof field === 'string') {
-          return field as keyof z.infer<typeof newCustomerFormSchema>;
-        }
-        return field;
-      });
-
-      // Validate current step's fields
-      const result = await form.trigger(formFields, { shouldFocus: true });
-
-      if (result) {
-        if (step === steps.length - 1) {
-          // Submit form if on last step
-          form.handleSubmit((data) => createCustomer.mutate(data))();
-        } else {
-          // Move to next step if validation passed
-          setStep(s => s + 1);
-        }
-      }
-    } catch (error) {
-      console.error('Validation error:', error);
-      toast({
-        title: "Error",
-        description: "Please check all required fields",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const prev = () => {
-    if (!isFirstStep) {
-      setStep(s => s - 1);
-    }
-  };
 
   return (
     <div className="space-y-6">
