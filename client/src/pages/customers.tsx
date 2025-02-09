@@ -34,6 +34,8 @@ import {
   LayoutGrid,
   Table,
   Filter,
+  ChevronRight,
+  ChevronLeft,
 } from "lucide-react";
 import {
   Select,
@@ -42,12 +44,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -61,7 +57,6 @@ import {
   PaymentMethod,
 } from "@shared/schema";
 import InputMask from 'react-input-mask';
-import { ChevronRight, ChevronLeft } from "lucide-react";
 import cn from 'classnames';
 
 type CustomerWithRelations = Customer & {
@@ -70,12 +65,14 @@ type CustomerWithRelations = Customer & {
   paymentMethods?: PaymentMethod[];
   serviceCount?: number;
   status?: CustomerStatus;
+  servicePlan?: ServicePlan;
 };
 
 type ViewMode = "grid" | "table";
 type CustomerStatus = "active" | "inactive" | "pending" | "suspended";
 type ServicePlan = "monthly" | "quarterly" | "yearly";
 
+// Customer form schema
 const newCustomerFormSchema = z.object({
   name: z.string().min(1, "Name is required"),
   email: z.string().email("Invalid email address"),
@@ -95,7 +92,6 @@ const newCustomerFormSchema = z.object({
             code: z.ZodIssueCode.custom,
             message: "Phone number must be in format: (123) 456-7890 or 123-456-7890",
           });
-          return false;
         }
       } else if (ctx.path[ctx.path.length - 2] === "email") {
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) {
@@ -103,7 +99,6 @@ const newCustomerFormSchema = z.object({
             code: z.ZodIssueCode.custom,
             message: "Please enter a valid email address",
           });
-          return false;
         }
       }
       return true;
@@ -119,6 +114,8 @@ const newCustomerFormSchema = z.object({
   }),
 });
 
+type CustomerFormData = z.infer<typeof newCustomerFormSchema>;
+
 function CustomerOnboardingWizard({
   onClose
 }: {
@@ -127,7 +124,7 @@ function CustomerOnboardingWizard({
   const [step, setStep] = useState(0);
   const { toast } = useToast();
 
-  const form = useForm<z.infer<typeof newCustomerFormSchema>>({
+  const form = useForm<CustomerFormData>({
     resolver: zodResolver(newCustomerFormSchema),
     defaultValues: {
       name: "",
@@ -172,7 +169,7 @@ function CustomerOnboardingWizard({
   }, [toast]);
 
   const createCustomer = useMutation({
-    mutationFn: async (data: z.infer<typeof newCustomerFormSchema>) => {
+    mutationFn: async (data: CustomerFormData) => {
       const res = await apiRequest("POST", "/api/customers", data);
       if (!res.ok) {
         const error = await res.json();
@@ -322,7 +319,7 @@ function CustomerOnboardingWizard({
     {
       title: "Contact Information",
       description: "Add contact details and address",
-      fields: ["contact.type", "contact.value", "address"],
+      fields: ["contact.type", "contact.value", "address.type", "address.address", "address.city", "address.state", "address.zipCode", "address.specialInstructions"],
       component: (
         <div className="space-y-4">
           <FormField
@@ -459,6 +456,19 @@ function CustomerOnboardingWizard({
                 </FormItem>
               )}
             />
+            <FormField
+              control={form.control}
+              name="address.specialInstructions"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Special Instructions (Optional)</FormLabel>
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
           </div>
         </div>
       ),
@@ -504,8 +514,11 @@ function CustomerOnboardingWizard({
                 <FormControl>
                   <Input
                     placeholder="Comma-separated list of add-ons"
-                    value={field.value?.join(", ") ?? ""}
-                    onChange={(e) => field.onChange(e.target.value.split(",").map(v => v.trim()).filter(Boolean))}
+                    value={Array.isArray(field.value) ? field.value.join(", ") : ""}
+                    onChange={(e) => {
+                      const addons = e.target.value.split(",").map(v => v.trim()).filter(Boolean);
+                      field.onChange(addons);
+                    }}
                   />
                 </FormControl>
                 <FormMessage />
@@ -582,8 +595,11 @@ function CustomerOnboardingWizard({
                 <FormControl>
                   <Input
                     placeholder="Comma-separated list of tags"
-                    value={field.value?.join(", ") ?? ""}
-                    onChange={(e) => field.onChange(e.target.value.split(",").map(v => v.trim()).filter(Boolean))}
+                    value={Array.isArray(field.value) ? field.value.join(", ") : ""}
+                    onChange={(e) => {
+                      const tags = e.target.value.split(",").map(v => v.trim()).filter(Boolean);
+                      field.onChange(tags);
+                    }}
                   />
                 </FormControl>
                 <FormMessage />
