@@ -534,22 +534,33 @@ function CustomerOnboardingWizard({
   const isFirstStep = step === 0;
 
   const next = async () => {
-    const fields = steps[step].fields.map(field => {
-      // Handle nested fields (e.g., "contact.type" -> ["contact", "type"])
-      const parts = field.split('.');
-      if (parts.length > 1) {
-        return field; // Keep the full path for nested fields
+    const stepFields = steps[step].fields;
+
+    // Create an array of field paths that form.trigger can understand
+    const formFields = stepFields.map(field => {
+      if (field.includes('.')) {
+        // For nested fields like "contact.type", return as is
+        return field;
       }
+      // For root level fields, cast to the correct type
       return field as keyof z.infer<typeof newCustomerFormSchema>;
     });
 
-    const result = await form.trigger(fields);
-    if (result) {
-      if (isLastStep) {
-        form.handleSubmit((data) => createCustomer.mutate(data))();
-      } else {
-        setStep(s => s + 1);
+    try {
+      // Validate just the current step's fields
+      const result = await form.trigger(formFields as any[], { shouldFocus: true });
+
+      if (result) {
+        if (isLastStep) {
+          // If it's the last step, submit the form
+          form.handleSubmit((data) => createCustomer.mutate(data))();
+        } else {
+          // If validation passed, move to next step
+          setStep(s => s + 1);
+        }
       }
+    } catch (error) {
+      console.error('Validation error:', error);
     }
   };
 
