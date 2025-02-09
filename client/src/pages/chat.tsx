@@ -27,22 +27,23 @@ export default function Chat() {
     enabled: !!selectedCustomer,
   });
 
-  const { sendMessage } = useWebSocket((data) => {
-    if (data.customerId === selectedCustomer?.id) {
+  const { sendMessage, isConnected } = useWebSocket((data) => {
+    if (data.type === 'message' && data.customerId === selectedCustomer?.id) {
       refetchMessages();
     }
   });
 
   const handleSendMessage = () => {
     if (!selectedCustomer || !newMessage.trim()) return;
-    
+
     sendMessage({
+      type: 'message',
       customerId: selectedCustomer.id,
       content: newMessage,
       fromCustomer: false,
-      timestamp: new Date(),
+      timestamp: new Date().toISOString(),
     });
-    
+
     setNewMessage("");
   };
 
@@ -51,7 +52,7 @@ export default function Chat() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Chat</h1>
         <p className="text-muted-foreground">
-          Communicate with your customers
+          Communicate with your customers {isConnected ? '(Connected)' : '(Disconnected)'}
         </p>
       </div>
 
@@ -131,7 +132,7 @@ export default function Chat() {
                       }
                     }}
                   />
-                  <Button onClick={handleSendMessage}>
+                  <Button onClick={handleSendMessage} disabled={!isConnected}>
                     <Send className="h-4 w-4" />
                   </Button>
                 </div>

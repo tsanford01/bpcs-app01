@@ -77,6 +77,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Switch } from "@/components/ui/switch";
 
 type CustomerWithRelations = Customer & {
   addresses?: CustomerAddress[];
@@ -440,16 +441,25 @@ function CustomerDetails({
   const [isAddingPayment, setIsAddingPayment] = useState(false);
   const { toast } = useToast();
 
-  const addContactForm = useForm<{
-    type: "phone" | "email";
-    value: string;
-  }>({
-    resolver: zodResolver(
-      z.object({
-        type: z.enum(["phone", "email"]),
-        value: z.string().min(1, "Contact value is required"),
-      })
-    ),
+  // Form validation schema enhancement
+  const contactFormSchema = z.object({
+    type: z.enum(["phone", "email"], {
+      required_error: "Please select a contact type",
+    }),
+    value: z.string()
+      .min(1, "Contact value is required")
+      .refine((val) => {
+        if (addContactForm.watch("type") === "email") {
+          return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
+        }
+        return /^\+?[\d\s-()]+$/.test(val);
+      }, {
+        message: "Please enter a valid email address or phone number",
+      }),
+  });
+
+  const addContactForm = useForm<z.infer<typeof contactFormSchema>>({
+    resolver: zodResolver(contactFormSchema),
     defaultValues: {
       type: "phone",
       value: "",
@@ -461,7 +471,7 @@ function CustomerDetails({
       const res = await apiRequest("POST", "/api/customer-contacts", {
         ...data,
         customerId: customer.id,
-        isPrimary: false,
+        isPrimary: !customer.contacts?.length, // Make it primary if it's the first contact
       });
       if (!res.ok) {
         const error = await res.json();
@@ -478,7 +488,7 @@ function CustomerDetails({
         description: "The contact has been added successfully",
       });
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       toast({
         title: "Error",
         description: error.message,
