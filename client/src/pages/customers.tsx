@@ -1008,8 +1008,7 @@ function NewCustomerDialog() {
                         <Input
                           type="date"
                           {...field}
-                          value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
-                          onChange={(e) => {
+                          value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}                          onChange={(e) => {
                             const date = e.target.value ? new Date(e.target.value) : null;
                             field.onChange(date?.toISOString() || null);
                           }}
@@ -1441,60 +1440,72 @@ export default function Customers() {
 
       {viewMode === "grid" ? (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {paginatedCustomers.map((customer) => (
-            <Card
-              key={customer.id}
-              className="cursor-pointer transition-shadow hover:shadow-lg"
-              onClick={() => setSelectedCustomer(customer)}
-            >
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <span>{customer.name}</span>
-                  {customer.requiresAttention && (
-                    <AlertCircle className="h-4 w-4 text-yellow-500" />
-                  )}
-                </CardTitle>
-                <CardDescription>{customer.email}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <Badge>{customer.status}</Badge>
-                    {customer.servicePlan && (
-                      <Badge variant="outline">{customer.servicePlan}</Badge>
+          {paginatedCustomers.map((customer) => {
+            const primaryAddress = customer.addresses?.find(addr => addr.isPrimary) || customer.addresses?.[0];
+
+            return (
+              <Card
+                key={customer.id}
+                className="cursor-pointer transition-shadow hover:shadow-lg"
+                onClick={() => setSelectedCustomer(customer)}
+              >
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between">
+                    <span>{customer.name}</span>
+                    {customer.requiresAttention && (
+                      <AlertCircle className="h-4 w-4 text-yellow-500" />
                     )}
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    <div className="flex justify-between">
-                      <span>Total Spent:</span>
-                      <span>${customer.totalSpent}</span>
+                  </CardTitle>
+                  <CardDescription>{customer.email}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <Badge>{customer.status}</Badge>
+                      {customer.servicePlan && (
+                        <Badge variant="outline">{customer.servicePlan}</Badge>
+                      )}
                     </div>
-                    <div className="flex justify-between">
-                      <span>Services:</span>
-                      <span>{customer.serviceCount}</span>
-                    </div>
-                    {customer.nextServiceDate && (
-                      <div className="flex justify-between">
-                        <span>Next Service:</span>
+                    {primaryAddress && (
+                      <div className="text-sm text-muted-foreground flex items-start">
+                        <MapPin className="h-4 w-4 mr-2 mt-0.5 shrink-0" />
                         <span>
-                          {new Date(customer.nextServiceDate).toLocaleDateString()}
+                          {primaryAddress.address}, {primaryAddress.city}, {primaryAddress.state} {primaryAddress.zipCode}
                         </span>
                       </div>
                     )}
-                  </div>
-                  {customer.tags && customer.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1">
-                      {customer.tags.map((tag, i) => (
-                        <Badge key={i} variant="secondary">
-                          {tag}
-                        </Badge>
-                      ))}
+                    <div className="text-sm text-muted-foreground">
+                      <div className="flex justify-between">
+                        <span>Total Spent:</span>
+                        <span>${customer.totalSpent}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Services:</span>
+                        <span>{customer.serviceCount}</span>
+                      </div>
+                      {customer.nextServiceDate && (
+                        <div className="flex justify-between">
+                          <span>Next Service:</span>
+                          <span>
+                            {new Date(customer.nextServiceDate).toLocaleDateString()}
+                          </span>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                    {customer.tags && customer.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {customer.tags.map((tag, i) => (
+                          <Badge key={i} variant="secondary">
+                            {tag}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       ) : (
         <Card>

@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import { useEffect, useState, useCallback } from "react";
+import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import {
@@ -30,7 +30,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: markerShadow,
 });
 
-// Simple geocoding function (this would ideally use a proper geocoding service)
+// Simple geocoding function
 async function geocodeAddress(address: string): Promise<{ lat: number; lng: number } | null> {
   try {
     const response = await fetch(
@@ -43,11 +43,21 @@ async function geocodeAddress(address: string): Promise<{ lat: number; lng: numb
         lng: parseFloat(data[0].lon)
       };
     }
+    console.log(`No results found for address: ${address}`);
     return null;
   } catch (error) {
     console.error("Geocoding error:", error);
     return null;
   }
+}
+
+// Map recenter component
+function MapRecenter({ center }: { center: L.LatLngExpression }) {
+  const map = useMap();
+  useEffect(() => {
+    map.setView(center);
+  }, [center, map]);
+  return null;
 }
 
 export default function Routes() {
@@ -82,13 +92,14 @@ export default function Routes() {
 
         if (primaryAddress) {
           const addressString = `${primaryAddress.address}, ${primaryAddress.city}, ${primaryAddress.state} ${primaryAddress.zipCode}`;
-          if (!locations.has(addressString)) {
+          try {
             const coords = await geocodeAddress(addressString);
             if (coords) {
+              console.log(`Found coordinates for ${addressString}:`, coords);
               newLocations.set(addressString, coords);
             }
-          } else {
-            newLocations.set(addressString, locations.get(addressString)!);
+          } catch (error) {
+            console.error(`Error geocoding address ${addressString}:`, error);
           }
         }
       }
@@ -99,10 +110,9 @@ export default function Routes() {
     geocodeAddresses();
   }, [dayAppointments, customers]);
 
-  // Calculate map center based on all locations
-  const getMapCenter = () => {
+  const getMapCenter = useCallback((): L.LatLngExpression => {
     if (locations.size === 0) {
-      return [40.3484, -111.7786] as L.LatLngExpression; // Default center
+      return [40.3484, -111.7786]; // Default center
     }
 
     const coords = Array.from(locations.values());
@@ -114,8 +124,8 @@ export default function Routes() {
       { lat: 0, lng: 0 }
     );
 
-    return [center.lat, center.lng] as L.LatLngExpression;
-  };
+    return [center.lat, center.lng];
+  }, [locations]);
 
   return (
     <div className="space-y-6">
@@ -127,7 +137,7 @@ export default function Routes() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-12">
-        <Card className="md:col-span-4 h-fit">
+        <Card className="md:col-span-4">
           <CardHeader>
             <CardTitle>Schedule</CardTitle>
             <CardDescription>Select date to view appointments</CardDescription>
@@ -191,6 +201,7 @@ export default function Routes() {
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                 />
+                <MapRecenter center={getMapCenter()} />
                 {dayAppointments.map((apt) => {
                   const customer = customers.find((c) => c.id === apt.customerId);
                   const primaryAddress = customer?.addresses?.find(addr => addr.isPrimary) || customer?.addresses?.[0];
@@ -205,7 +216,7 @@ export default function Routes() {
                   return (
                     <Marker 
                       key={apt.id} 
-                      position={[location.lat, location.lng] as L.LatLngExpression}
+                      position={[location.lat, location.lng]}
                     >
                       <Popup>
                         <div>
