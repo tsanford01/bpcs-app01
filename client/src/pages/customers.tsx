@@ -30,9 +30,21 @@ import {
 } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { 
-  Search, Plus, Phone, Mail, MapPin, Gift, Calendar, Tag, 
-  CreditCard, History, LayoutGrid, Table, AlertCircle, Filter 
+import {
+  Search,
+  Plus,
+  Phone,
+  Mail,
+  MapPin,
+  Gift,
+  Calendar,
+  Tag,
+  CreditCard,
+  History,
+  LayoutGrid,
+  Table,
+  AlertCircle,
+  Filter,
 } from "lucide-react";
 import {
   Select,
@@ -57,6 +69,7 @@ import {
   InsertCustomer,
   insertCustomerSchema,
 } from "@shared/schema";
+import * as z from 'zod';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -91,7 +104,7 @@ export default function Customers() {
 
   const filteredCustomers = customers.filter(
     (customer) => {
-      const matchesSearch = 
+      const matchesSearch =
         customer.name.toLowerCase().includes(search.toLowerCase()) ||
         customer.email.toLowerCase().includes(search.toLowerCase()) ||
         customer.tags?.some(tag => tag.toLowerCase().includes(search.toLowerCase()));
@@ -668,26 +681,90 @@ function CustomerDetails({
 function NewCustomerDialog() {
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
+  const [currentTab, setCurrentTab] = useState("basic");
 
-  const form = useForm<InsertCustomer>({
-    resolver: zodResolver(insertCustomerSchema),
+  const form = useForm<InsertCustomer & {
+    address: {
+      type: string;
+      address: string;
+      city: string;
+      state: string;
+      zipCode: string;
+      specialInstructions?: string;
+    };
+    contact: {
+      type: string;
+      value: string;
+    };
+  }>({
+    resolver: zodResolver(insertCustomerSchema.extend({
+      address: z.object({
+        type: z.enum(["billing", "service"]),
+        address: z.string().min(1, "Address is required"),
+        city: z.string().min(1, "City is required"),
+        state: z.string().min(1, "State is required"),
+        zipCode: z.string().min(5, "ZIP code must be at least 5 characters"),
+        specialInstructions: z.string().optional(),
+      }),
+      contact: z.object({
+        type: z.enum(["phone", "email"]),
+        value: z.string().min(1, "Contact value is required"),
+      }),
+    })),
     defaultValues: {
       tags: [],
       serviceAddons: [],
+      status: "active",
+      address: {
+        type: "service",
+        address: "",
+        city: "",
+        state: "",
+        zipCode: "",
+      },
+      contact: {
+        type: "phone",
+        value: "",
+      },
     },
   });
 
   const createCustomer = useMutation({
-    mutationFn: async (data: InsertCustomer) => {
-      const res = await apiRequest("POST", "/api/customers", {
-        ...data,
-        notes: data.notes || null,
-      });
-      if (!res.ok) {
-        const error = await res.json();
+    mutationFn: async (data: InsertCustomer & {
+      address: any;
+      contact: any;
+    }) => {
+      const { address, contact, ...customerData } = data;
+
+      // Create the customer first
+      const customerRes = await apiRequest("POST", "/api/customers", customerData);
+      if (!customerRes.ok) {
+        const error = await customerRes.json();
         throw new Error(error.message || "Failed to create customer");
       }
-      return res.json();
+      const customer = await customerRes.json();
+
+      // Create the address
+      const addressRes = await apiRequest("POST", "/api/customer-addresses", {
+        ...address,
+        customerId: customer.id,
+        isPrimary: true,
+      });
+      if (!addressRes.ok) {
+        throw new Error("Failed to create address");
+      }
+
+      // Create the contact
+      const contactRes = await apiRequest("POST", "/api/customer-contacts", {
+        ...contact,
+        customerId: customer.id,
+        isPrimary: true,
+      });
+      if (!contactRes.ok) {
+        throw new Error("Failed to create contact");
+      }
+
+      return customer;
     },
     onSuccess: () => {
       setOpen(false);
@@ -716,11 +793,11 @@ function NewCustomerDialog() {
           New Customer
         </Button>
       </SheetTrigger>
-      <SheetContent>
+      <SheetContent className="w-[400px] sm:w-[640px] sm:max-w-[100vw]">
         <SheetHeader>
           <SheetTitle>Add New Customer</SheetTitle>
           <SheetDescription>
-            Create a new customer record in your database
+            Create a new customer record with all required information
           </SheetDescription>
         </SheetHeader>
 
@@ -729,80 +806,342 @@ function NewCustomerDialog() {
             onSubmit={form.handleSubmit((data) => createCustomer.mutate(data))}
             className="space-y-4 mt-4"
           >
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Full Name</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <Tabs value={currentTab} onValueChange={setCurrentTab}>
+              <TabsList className="grid grid-cols-4 w-full">
+                <TabsTrigger value="basic">Basic Info</TabsTrigger>
+                <TabsTrigger value="contact">Contact</TabsTrigger>
+                <TabsTrigger value="service">Service</TabsTrigger>
+                <TabsTrigger value="preferences">Preferences</TabsTrigger>
+              </TabsList>
 
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <Input type="email" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+              {/* Basic Info Tab */}
+              <TabsContent value="basic" className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Full Name</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-            <FormField
-              control={form.control}
-              name="notes"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Notes (Optional)</FormLabel>
-                  <FormControl>
-                    <Input {...field} value={field.value ?? ""} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                <FormField
+                  control={form.control}
+                  name="birthday"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Birthday (Optional)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="date"
+                          {...field}
+                          value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
+                          onChange={(e) => {
+                            const date = e.target.value ? new Date(e.target.value) : null;
+                            field.onChange(date?.toISOString() || null);
+                          }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-            <FormField
-              control={form.control}
-              name="servicePlan"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Service Plan</FormLabel>
-                  <Select 
-                    onValueChange={field.onChange} 
-                    defaultValue={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a service plan" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="monthly">Monthly</SelectItem>
-                      <SelectItem value="quarterly">Quarterly</SelectItem>
-                      <SelectItem value="yearly">Yearly</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                <FormField
+                  control={form.control}
+                  name="notes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Notes (Optional)</FormLabel>
+                      <FormControl>
+                        <Input {...field} value={field.value ?? ""} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </TabsContent>
+
+              {/* Contact Tab */}
+              <TabsContent value="contact" className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="contact.type"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Contact Type</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select contact type" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="phone">Phone</SelectItem>
+                          <SelectItem value="email">Email</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="contact.value"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Contact Value</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          type={form.watch("contact.type") === "email" ? "email" : "tel"}
+                          placeholder={form.watch("contact.type") === "email" ? "Email address" : "Phone number"}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Address Fields */}
+                <FormField
+                  control={form.control}
+                  name="address.type"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Address Type</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select address type" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="billing">Billing Address</SelectItem>
+                          <SelectItem value="service">Service Address</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="address.address"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Street Address</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="address.city"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>City</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="address.state"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>State</FormLabel>
+                        <FormControl>
+                          <Input {...field}/>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="address.zipCode"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>ZIP Code</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="address.specialInstructions"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Special Instructions (Optional)</FormLabel>
+                      <FormControl>
+                        <Input {...field} value={field.value ?? ""} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </TabsContent>
+
+              {/* Service Tab */}
+              <TabsContent value="service" className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="servicePlan"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Service Plan</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a service plan" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="monthly">Monthly</SelectItem>
+                          <SelectItem value="quarterly">Quarterly</SelectItem>
+                          <SelectItem value="yearly">Yearly</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="serviceAddons"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Service Add-ons</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Comma-separated list of add-ons"
+                          value={field.value?.join(", ") ?? ""}
+                          onChange={(e) => field.onChange(e.target.value.split(",").map(v => v.trim()).filter(Boolean))}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </TabsContent>
+
+              {/* Preferences Tab */}
+              <TabsContent value="preferences" className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="preferredContactTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Preferred Contact Time</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select preferred time" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="morning">Morning</SelectItem>
+                          <SelectItem value="afternoon">Afternoon</SelectItem>
+                          <SelectItem value="evening">Evening</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="communicationFrequency"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Communication Frequency</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select frequency" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="weekly">Weekly</SelectItem>
+                          <SelectItem value="monthly">Monthly</SelectItem>
+                          <SelectItem value="quarterly">Quarterly</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="tags"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tags</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Comma-separated list of tags"
+                          value={field.value?.join(", ") ?? ""}
+                          onChange={(e) => field.onChange(e.target.value.split(",").map(v => v.trim()).filter(Boolean))}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </TabsContent>
+            </Tabs>
 
             <Button
               type="submit"
               className="w-full"
-              disabled={createCustomer.isPending}
+              disabled={form.formState.isSubmitting}
             >
-              Add Customer
+              {form.formState.isSubmitting ? (
+                "Creating..."
+              ) : (
+                "Create Customer"
+              )}
             </Button>
           </form>
         </Form>
