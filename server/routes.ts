@@ -178,6 +178,34 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  app.get("/api/customers/:id", requireAuth, async (req, res) => {
+    try {
+      const customerId = Number(req.params.id);
+      const customer = await storage.getCustomer(customerId);
+      if (!customer) {
+        return sendError(res, 404, 'Customer not found');
+      }
+
+      // Get all related data
+      const [contacts, addresses, paymentMethods] = await Promise.all([
+        storage.getCustomerContacts(customerId),
+        storage.getCustomerAddresses(customerId),
+        storage.getCustomerPaymentMethods(customerId),
+      ]);
+
+      // Return customer with all related data
+      res.json({
+        ...customer,
+        contacts,
+        addresses,
+        paymentMethods,
+      });
+    } catch (error) {
+      console.error('[API] Error fetching customer:', error);
+      sendError(res, 500, 'Failed to fetch customer');
+    }
+  });
+
   app.get("/api/appointments", requireAuth, async (req, res) => {
     try {
       const appointments = await storage.listAppointments();

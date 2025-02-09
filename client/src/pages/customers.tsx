@@ -1,4 +1,4 @@
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import {
   Card,
@@ -92,356 +92,27 @@ const CUSTOMERS_PER_PAGE = 12;
 type CustomerStatus = "active" | "inactive" | "pending" | "suspended";
 type ServicePlan = "monthly" | "quarterly" | "yearly";
 
-export default function Customers() {
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<CustomerStatus | "all">("all");
-  const [planFilter, setPlanFilter] = useState<ServicePlan | "all">("all");
-  const [viewMode, setViewMode] = useState<ViewMode>("grid");
-  const [page, setPage] = useState(1);
-  const [selectedCustomer, setSelectedCustomer] = useState<CustomerWithRelations | null>(null);
-
-  const { data: customers = [] } = useQuery<CustomerWithRelations[]>({
-    queryKey: ["/api/customers"],
-  });
-
-  const filteredCustomers = customers.filter(
-    (customer) => {
-      const matchesSearch =
-        customer.name.toLowerCase().includes(search.toLowerCase()) ||
-        customer.email.toLowerCase().includes(search.toLowerCase()) ||
-        customer.tags?.some(tag => tag.toLowerCase().includes(search.toLowerCase()));
-
-      const matchesStatus = statusFilter === "all" || customer.status === statusFilter;
-      const matchesPlan = planFilter === "all" || customer.servicePlan === planFilter;
-
-      return matchesSearch && matchesStatus && matchesPlan;
-    }
-  );
-
-  const paginatedCustomers = filteredCustomers.slice(
-    (page - 1) * CUSTOMERS_PER_PAGE,
-    page * CUSTOMERS_PER_PAGE
-  );
-
-  const totalPages = Math.ceil(filteredCustomers.length / CUSTOMERS_PER_PAGE);
-
-  const toggleViewMode = () => {
-    setViewMode(prev => prev === "grid" ? "table" : "grid");
-  };
-
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Customers</h1>
-          <p className="text-muted-foreground">Manage your customer database</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={toggleViewMode}
-            title={`Switch to ${viewMode === "grid" ? "table" : "grid"} view`}
-          >
-            {viewMode === "grid" ? (
-              <Table className="h-4 w-4" />
-            ) : (
-              <LayoutGrid className="h-4 w-4" />
-            )}
-          </Button>
-          <NewCustomerDialog />
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-        <div className="flex items-center space-x-2 flex-1">
-          <Search className="w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Search customers..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="max-w-sm"
-          />
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as CustomerStatus | "all")}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Filter by status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="inactive">Inactive</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
-              <SelectItem value="suspended">Suspended</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select value={planFilter} onValueChange={(value) => setPlanFilter(value as ServicePlan | "all")}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Filter by plan" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Plans</SelectItem>
-              <SelectItem value="monthly">Monthly</SelectItem>
-              <SelectItem value="quarterly">Quarterly</SelectItem>
-              <SelectItem value="yearly">Yearly</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      {viewMode === "grid" ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {paginatedCustomers.map((customer) => (
-            <CustomerCard
-              key={customer.id}
-              customer={customer}
-              onSelect={() => setSelectedCustomer(customer)}
-            />
-          ))}
-        </div>
-      ) : (
-        <div className="rounded-md border">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b bg-muted/50">
-                <th className="py-3 px-4 text-left">Name</th>
-                <th className="py-3 px-4 text-left">Email</th>
-                <th className="py-3 px-4 text-left">Plan</th>
-                <th className="py-3 px-4 text-left">Status</th>
-                <th className="py-3 px-4 text-left">Since</th>
-                <th className="py-3 px-4 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {paginatedCustomers.map((customer) => (
-                <CustomerTableRow
-                  key={customer.id}
-                  customer={customer}
-                  onSelect={() => setSelectedCustomer(customer)}
-                />
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {totalPages > 1 && (
-        <div className="flex justify-center gap-2 mt-4">
-          <Button
-            variant="outline"
-            onClick={() => setPage(p => Math.max(1, p - 1))}
-            disabled={page === 1}
-          >
-            Previous
-          </Button>
-          <div className="flex items-center gap-2">
-            {Array.from({ length: totalPages }, (_, i) => (
-              <Button
-                key={i + 1}
-                variant={page === i + 1 ? "default" : "outline"}
-                onClick={() => setPage(i + 1)}
-                className="w-8 h-8 p-0"
-              >
-                {i + 1}
-              </Button>
-            ))}
-          </div>
-          <Button
-            variant="outline"
-            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-            disabled={page === totalPages}
-          >
-            Next
-          </Button>
-        </div>
-      )}
-
-      {selectedCustomer && (
-        <CustomerDetails
-          customer={selectedCustomer}
-          onClose={() => setSelectedCustomer(null)}
-        />
-      )}
-    </div>
-  );
-}
-
-function CustomerCard({
-  customer,
-  onSelect,
-}: {
-  customer: CustomerWithRelations;
-  onSelect: () => void;
-}) {
-  const primaryAddress = customer.addresses?.find(addr => addr.isPrimary);
-  const primaryContact = customer.contacts?.find(contact => contact.isPrimary && contact.type === "phone");
-
-  return (
-    <Card className="hover:bg-accent/50 transition-colors">
-      <CardHeader>
-        <div className="flex justify-between items-start">
-          <div className="space-y-1">
-            <CardTitle className="flex items-center gap-2">
-              {customer.name}
-              {customer.vipCustomer && (
-                <Badge variant="default" className="bg-yellow-500">VIP</Badge>
-              )}
-            </CardTitle>
-            <CardDescription>
-              Customer since {new Date(customer.customerSince).toLocaleDateString()}
-            </CardDescription>
-          </div>
-          <CustomerActions customer={customer} onSelect={onSelect} />
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-2">
-        <div className="flex items-center text-sm">
-          <Mail className="w-4 h-4 mr-2 text-muted-foreground" />
-          {customer.email}
-        </div>
-        {primaryContact && (
-          <div className="flex items-center text-sm">
-            <Phone className="w-4 h-4 mr-2 text-muted-foreground" />
-            {primaryContact.value}
-          </div>
-        )}
-        {primaryAddress && (
-          <div className="flex items-center text-sm">
-            <MapPin className="w-4 h-4 mr-2 text-muted-foreground" />
-            {primaryAddress.address}
-          </div>
-        )}
-        {customer.requiresAttention && (
-          <div className="flex items-center text-sm text-yellow-500">
-            <AlertCircle className="w-4 h-4 mr-2" />
-            Requires attention
-          </div>
-        )}
-      </CardContent>
-      <CardFooter>
-        <div className="flex flex-wrap gap-1">
-          {customer.tags?.map((tag, index) => (
-            <Badge key={index} variant="secondary" className="text-xs">
-              {tag}
-            </Badge>
-          ))}
-        </div>
-      </CardFooter>
-    </Card>
-  );
-}
-
-function CustomerTableRow({
-  customer,
-  onSelect,
-}: {
-  customer: CustomerWithRelations;
-  onSelect: () => void;
-}) {
-  return (
-    <tr className="border-b hover:bg-muted/50">
-      <td className="py-3 px-4">
-        <div className="flex items-center gap-2">
-          {customer.name}
-          {customer.vipCustomer && (
-            <Badge variant="default" className="bg-yellow-500">VIP</Badge>
-          )}
-        </div>
-      </td>
-      <td className="py-3 px-4">{customer.email}</td>
-      <td className="py-3 px-4">{customer.servicePlan || "—"}</td>
-      <td className="py-3 px-4">
-        <Badge
-          variant={customer.status === "active" ? "default" : "secondary"}
-          className="capitalize"
-        >
-          {customer.status}
-        </Badge>
-      </td>
-      <td className="py-3 px-4">
-        {new Date(customer.customerSince).toLocaleDateString()}
-      </td>
-      <td className="py-3 px-4 text-right">
-        <CustomerActions customer={customer} onSelect={onSelect} />
-      </td>
-    </tr>
-  );
-}
-
-function CustomerActions({
-  customer,
-  onSelect,
-}: {
-  customer: CustomerWithRelations;
-  onSelect: () => void;
-}) {
-  const { toast } = useToast();
-
-  const updateCustomer = useMutation({
-    mutationFn: async (data: Partial<Customer>) => {
-      const res = await apiRequest("PATCH", `/api/customers/${customer.id}`, data);
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Failed to update customer");
-      }
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
-      toast({
-        title: "Customer updated",
-        description: "The customer has been updated successfully",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const toggleStatus = () => {
-    const newStatus = customer.status === "active" ? "inactive" : "active";
-    updateCustomer.mutate({ status: newStatus });
-  };
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="h-8 w-8 p-0">
-          <span className="sr-only">Open menu</span>
-          <Filter className="h-4 w-4" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={onSelect}>
-          View Details
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={toggleStatus}>
-          {customer.status === "active" ? "Deactivate" : "Activate"}
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
-
-function CustomerDetails({
-  customer,
-  onClose,
-}: {
+interface CustomerDetailsProps {
   customer: CustomerWithRelations;
   onClose: () => void;
-}) {
+  onUpdate: (customer: CustomerWithRelations) => void;
+}
+
+function CustomerDetails({ customer, onClose, onUpdate }: CustomerDetailsProps) {
   const [isAddingContact, setIsAddingContact] = useState(false);
   const [isAddingAddress, setIsAddingAddress] = useState(false);
   const [isAddingPayment, setIsAddingPayment] = useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  // Form validation schema enhancement
+  // Fetch fresh customer data with configured refetch interval
+  const { data: currentCustomer, refetch } = useQuery<CustomerWithRelations>({
+    queryKey: ["/api/customers", customer.id],
+    enabled: !!customer.id,
+    refetchInterval: 1000, // Refetch every second while the details are open
+    onSuccess: onUpdate,
+  });
+
   const contactFormSchema = z.object({
     type: z.enum(["phone", "email"], {
       required_error: "Please select a contact type",
@@ -471,7 +142,7 @@ function CustomerDetails({
       const res = await apiRequest("POST", `/api/customers/${customer.id}/contacts`, {
         ...data,
         customerId: customer.id,
-        isPrimary: !customer.contacts?.length,
+        isPrimary: !(currentCustomer?.contacts ?? []).length,
       });
       if (!res.ok) {
         const error = await res.json();
@@ -482,8 +153,10 @@ function CustomerDetails({
     onSuccess: () => {
       setIsAddingContact(false);
       addContactForm.reset();
-      // Invalidate both the customer list and the specific customer's data
+      // Invalidate queries and refetch
       queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/customers", customer.id] });
+      refetch();
       toast({
         title: "Contact added",
         description: "The contact has been added successfully",
@@ -538,7 +211,7 @@ function CustomerDetails({
       const res = await apiRequest("POST", `/api/customers/${customer.id}/addresses`, {
         ...data,
         customerId: customer.id,
-        isPrimary: !customer.addresses?.length,
+        isPrimary: !(currentCustomer?.addresses ?? []).length,
       });
       if (!res.ok) {
         const error = await res.json();
@@ -549,8 +222,10 @@ function CustomerDetails({
     onSuccess: () => {
       setIsAddingAddress(false);
       addAddressForm.reset();
-      // Invalidate both the customer list and the specific customer's data
+      // Invalidate both queries
       queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/customers", customer.id] });
+      refetch();
       toast({
         title: "Address added",
         description: "The address has been added successfully",
@@ -593,7 +268,7 @@ function CustomerDetails({
       const res = await apiRequest("POST", `/api/customers/${customer.id}/payment-methods`, {
         ...data,
         customerId: customer.id,
-        isPrimary: !customer.paymentMethods?.length,
+        isPrimary: !(currentCustomer?.paymentMethods ?? []).length,
       });
       if (!res.ok) {
         const error = await res.json();
@@ -606,6 +281,8 @@ function CustomerDetails({
       addPaymentForm.reset();
       // Invalidate both the customer list and the specific customer's data
       queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/customers", customer.id] });
+      refetch();
       toast({
         title: "Payment method added",
         description: "The payment method has been added successfully",
@@ -624,9 +301,9 @@ function CustomerDetails({
     <Sheet open onOpenChange={(open) => !open && onClose()}>
       <SheetContent className="w-[400px] sm:w-[540px] sm:max-w-[100vw]">
         <SheetHeader>
-          <SheetTitle>{customer.name}</SheetTitle>
+          <SheetTitle>{currentCustomer?.name ?? customer.name}</SheetTitle>
           <SheetDescription>
-            Customer #{customer.id} • {customer.status}
+            Customer #{currentCustomer?.id ?? customer.id} • {currentCustomer?.status ?? customer.status}
           </SheetDescription>
         </SheetHeader>
 
@@ -646,19 +323,21 @@ function CustomerDetails({
                 <div className="grid gap-2">
                   <div className="flex items-center">
                     <Mail className="w-4 h-4 mr-2" />
-                    <span>{customer.email}</span>
+                    <span>{currentCustomer?.email ?? customer.email}</span>
                   </div>
                   <div className="flex items-center">
                     <Gift className="w-4 h-4 mr-2" />
                     <span>
-                      {customer.birthday
-                        ? new Date(customer.birthday).toLocaleDateString()
+                      {currentCustomer?.birthday
+                        ? new Date(currentCustomer.birthday).toLocaleDateString()
                         : "No birthday set"}
                     </span>
                   </div>
                   <div className="flex items-center">
                     <Calendar className="w-4 h-4 mr-2" />
-                    <span>Customer since {new Date(customer.customerSince).toLocaleDateString()}</span>
+                    <span>
+                      Customer since {new Date(currentCustomer?.customerSince ?? customer.customerSince).toLocaleDateString()}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -666,18 +345,22 @@ function CustomerDetails({
               <div className="space-y-4">
                 <h4 className="text-sm font-medium">Service Plan</h4>
                 <div className="grid gap-2">
-                  <div>Plan: {customer.servicePlan || "No plan"}</div>
-                  {customer.contractStartDate && (
-                    <div>Contract Start: {new Date(customer.contractStartDate).toLocaleDateString()}</div>
+                  <div>Plan: {(currentCustomer?.servicePlan ?? customer.servicePlan) || "No plan"}</div>
+                  {currentCustomer?.contractStartDate && (
+                    <div>
+                      Contract Start: {new Date(currentCustomer.contractStartDate).toLocaleDateString()}
+                    </div>
                   )}
-                  {customer.contractEndDate && (
-                    <div>Contract End: {new Date(customer.contractEndDate).toLocaleDateString()}</div>
+                  {currentCustomer?.contractEndDate && (
+                    <div>
+                      Contract End: {new Date(currentCustomer.contractEndDate).toLocaleDateString()}
+                    </div>
                   )}
-                  {customer.serviceAddons && customer.serviceAddons.length > 0 && (
+                  {currentCustomer?.serviceAddons?.length > 0 && (
                     <div>
                       Add-ons:
                       <div className="flex flex-wrap gap-1 mt-1">
-                        {customer.serviceAddons.map((addon, i) => (
+                        {currentCustomer.serviceAddons.map((addon, i) => (
                           <Badge key={i} variant="secondary">
                             {addon}
                           </Badge>
@@ -691,10 +374,16 @@ function CustomerDetails({
               <div className="space-y-4">
                 <h4 className="text-sm font-medium">Communication Preferences</h4>
                 <div className="grid gap-2">
-                  <div>Preferred Time: {customer.preferredContactTime || "Not set"}</div>
-                  <div>Frequency: {customer.communicationFrequency || "Not set"}</div>
-                  {customer.lastContactDate && (
-                    <div>Last Contact: {new Date(customer.lastContactDate).toLocaleDateString()}</div>
+                  <div>
+                    Preferred Time: {(currentCustomer?.preferredContactTime ?? customer.preferredContactTime) || "Not set"}
+                  </div>
+                  <div>
+                    Frequency: {(currentCustomer?.communicationFrequency ?? customer.communicationFrequency) || "Not set"}
+                  </div>
+                  {currentCustomer?.lastContactDate && (
+                    <div>
+                      Last Contact: {new Date(currentCustomer.lastContactDate).toLocaleDateString()}
+                    </div>
                   )}
                 </div>
               </div>
@@ -702,7 +391,7 @@ function CustomerDetails({
               <div className="space-y-4">
                 <h4 className="text-sm font-medium">Tags</h4>
                 <div className="flex flex-wrap gap-1">
-                  {customer.tags?.map((tag, index) => (
+                  {(currentCustomer?.tags ?? customer.tags)?.map((tag, index) => (
                     <Badge key={index} variant="outline">
                       <Tag className="w-3 h-3 mr-1" />
                       {tag}
@@ -711,10 +400,10 @@ function CustomerDetails({
                 </div>
               </div>
 
-              {customer.notes && (
+              {currentCustomer?.notes && (
                 <div className="space-y-4">
                   <h4 className="text-sm font-medium">Notes</h4>
-                  <p className="text-sm text-muted-foreground">{customer.notes}</p>
+                  <p className="text-sm text-muted-foreground">{currentCustomer.notes}</p>
                 </div>
               )}
             </TabsContent>
@@ -733,7 +422,7 @@ function CustomerDetails({
                   </Button>
                 </div>
                 <div className="space-y-2">
-                  {customer.contacts?.map((contact, index) => (
+                  {(currentCustomer?.contacts ?? customer.contacts)?.map((contact, index) => (
                     <Card key={index}>
                       <CardContent className="flex items-center justify-between p-4">
                         <div className="flex items-center">
@@ -763,7 +452,7 @@ function CustomerDetails({
                   <SheetHeader>
                     <SheetTitle>Add New Contact</SheetTitle>
                     <SheetDescription>
-                      Add a new contact method for {customer.name}
+                      Add a new contact method for {currentCustomer?.name ?? customer.name}
                     </SheetDescription>
                   </SheetHeader>
 
@@ -827,7 +516,6 @@ function CustomerDetails({
                 </SheetContent>
               </Sheet>
             </TabsContent>
-
             <TabsContent value="addresses" className="space-y-6">
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
@@ -842,7 +530,7 @@ function CustomerDetails({
                   </Button>
                 </div>
                 <div className="space-y-2">
-                  {customer.addresses?.map((address, index) => (
+                  {(currentCustomer?.addresses ?? customer.addresses)?.map((address, index) => (
                     <Card key={index}>
                       <CardContent className="flex items-center justify-between p-4">
                         <div className="flex items-center">
@@ -873,7 +561,7 @@ function CustomerDetails({
                   <SheetHeader>
                     <SheetTitle>Add New Address</SheetTitle>
                     <SheetDescription>
-                      Add a new address for {customer.name}
+                      Add a new address for {currentCustomer?.name ?? customer.name}
                     </SheetDescription>
                   </SheetHeader>
 
@@ -1004,7 +692,7 @@ function CustomerDetails({
                   </Button>
                 </div>
                 <div className="space-y-2">
-                  {customer.paymentMethods?.map((method, index) => (
+                  {(currentCustomer?.paymentMethods ?? customer.paymentMethods)?.map((method, index) => (
                     <Card key={index}>
                       <CardContent className="flex items-center justify-between p-4">
                         <div className="flex items-center">
@@ -1034,7 +722,7 @@ function CustomerDetails({
                     <SheetHeader>
                       <SheetTitle>Add Payment Method</SheetTitle>
                       <SheetDescription>
-                        Add a new payment method for {customer.name}
+                        Add a new payment method for {currentCustomer?.name ?? customer.name}
                       </SheetDescription>
                     </SheetHeader>
 
@@ -1128,11 +816,11 @@ function CustomerDetails({
                 <div className="grid gap-2">
                   <div className="flex justify-between items-center">
                     <span className="text-muted-foreground">Total Spent</span>
-                    <span className="font-medium">${customer.totalSpent}</span>
+                    <span className="font-medium">${currentCustomer?.totalSpent ?? customer.totalSpent}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-muted-foreground">Services Used</span>
-                    <span className="font-medium">{customer.serviceCount}</span>
+                    <span className="font-medium">{currentCustomer?.serviceCount ?? customer.serviceCount}</span>
                   </div>
                 </div>
               </div>
@@ -1390,7 +1078,6 @@ function NewCustomerDialog() {
                     </FormItem>
                   )}
                 />
-
                 <FormField
                   control={form.control}
                   name="address.type"
