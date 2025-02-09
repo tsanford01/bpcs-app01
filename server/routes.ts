@@ -4,6 +4,8 @@ import { storage } from "./storage";
 import { setupAuth } from "./auth";
 import { WebSocketServer, WebSocket } from "ws";
 import { insertCustomerSchema, insertAppointmentSchema, insertReviewSchema, insertMessageSchema, insertCustomerContactSchema } from "@shared/schema";
+import {insertCustomerAddressSchema, insertPaymentMethodSchema} from "@shared/schema"; // Added import statements
+
 
 // Extend WebSocket type to include isAlive property
 interface ExtendedWebSocket extends WebSocket {
@@ -305,6 +307,53 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error('[API] Error fetching customer contacts:', error);
       res.status(500).json({ message: 'Failed to fetch customer contacts' });
+    }
+  });
+
+  // Add these routes after the existing customer contact routes
+  app.post("/api/customers/:customerId/addresses", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      console.log('[API] Unauthorized access attempt to POST /api/customers/:customerId/addresses');
+      return res.sendStatus(401);
+    }
+
+    try {
+      const customerId = Number(req.params.customerId);
+      const address = { ...req.body, customerId };
+
+      const parsed = insertCustomerAddressSchema.safeParse(address);
+      if (!parsed.success) {
+        return res.status(400).json(parsed.error);
+      }
+
+      const newAddress = await storage.createCustomerAddress(parsed.data);
+      res.status(201).json(newAddress);
+    } catch (error) {
+      console.error('[API] Error creating customer address:', error);
+      res.status(500).json({ message: 'Failed to create customer address' });
+    }
+  });
+
+  app.post("/api/customers/:customerId/payment-methods", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      console.log('[API] Unauthorized access attempt to POST /api/customers/:customerId/payment-methods');
+      return res.sendStatus(401);
+    }
+
+    try {
+      const customerId = Number(req.params.customerId);
+      const paymentMethod = { ...req.body, customerId };
+
+      const parsed = insertPaymentMethodSchema.safeParse(paymentMethod);
+      if (!parsed.success) {
+        return res.status(400).json(parsed.error);
+      }
+
+      const newPaymentMethod = await storage.createPaymentMethod(parsed.data);
+      res.status(201).json(newPaymentMethod);
+    } catch (error) {
+      console.error('[API] Error creating payment method:', error);
+      res.status(500).json({ message: 'Failed to create payment method' });
     }
   });
 

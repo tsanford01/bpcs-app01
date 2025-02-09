@@ -534,7 +534,7 @@ function CustomerDetails({
       zipCode: string;
       specialInstructions?: string;
     }) => {
-      const res = await apiRequest("POST", "/api/customer-addresses", {
+      const res = await apiRequest("POST", `/api/customers/${customer.id}/addresses`, {
         ...data,
         customerId: customer.id,
         isPrimary: !customer.addresses?.length,
@@ -588,7 +588,7 @@ function CustomerDetails({
       last4: string;
       autopayEnabled: boolean;
     }) => {
-      const res = await apiRequest("POST", "/api/payment-methods", {
+      const res = await apiRequest("POST", `/api/customers/${customer.id}/payment-methods`, {
         ...data,
         customerId: customer.id,
         isPrimary: !customer.paymentMethods?.length,
